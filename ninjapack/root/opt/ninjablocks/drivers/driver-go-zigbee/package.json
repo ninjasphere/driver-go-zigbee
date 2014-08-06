@@ -1,0 +1,13 @@
+{
+  "name": "driver-zigbee",
+  "version": "0.1.0",
+  "description": "Ninja Sphere - Zigbee Driver",
+  "main": "main.go",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Elliot Shepherd <elliot@ninjablocks.com>",
+  "license": "MIT",
+  "topics": {},
+  "maxMemory": 10
+}
