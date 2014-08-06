@@ -30,12 +30,12 @@ func main() {
 		log.Fatalf("Could not connect to MQTT: %s", err)
 	}
 
-	bus, err := conn.AnnounceDriver("com.ninjablocks.zigbee", "driver-zigbee", getCurDir())
+	_, err = conn.AnnounceDriver("com.ninjablocks.zigbee", "driver-zigbee", getCurDir())
 	if err != nil {
 		log.Fatalf("Could not get driver bus: %s", err)
 	}
 
-	spew.Dump(bus)
+	//spew.Dump(bus)
 
 	nwkmgrConn, err := zigbee.ConnectToNwkMgrServer(hostname, nwkmgrPort)
 	if err != nil {
@@ -92,6 +92,34 @@ func main() {
 				}
 
 				log.Printf("Got toggle response from device! Status: %s", response.Status.String())
+
+				spew.Dump(response)
+
+				powerRequest := &gateway.DevGetPowerReq{
+					DstAddress: &gateway.GwAddressStructT{
+						AddressType: gateway.GwAddressTypeT_UNICAST.Enum(),
+						IeeeAddr:    device.IeeeAddress,
+					},
+				}
+
+				confirmation = &gateway.GwZigbeeGenericCnf{}
+
+				err = gatewayConn.SendCommand(powerRequest, confirmation)
+				if err != nil {
+					log.Fatalf("Failed to request power: ", err)
+				}
+				log.Printf("Got power request confirmation")
+				if confirmation.Status.String() != "STATUS_SUCCESS" {
+					log.Fatalf("Failed to request the power. Status:%s", confirmation.Status.String())
+				}
+
+				powerResponse := &gateway.DevGetPowerRspInd{}
+				err = gatewayConn.WaitForSequenceResponse(confirmation.SequenceNumber, powerResponse)
+				if err != nil {
+					log.Fatalf("Failed to get power response: ", err)
+				}
+
+				spew.Dump(powerResponse)
 			}
 
 		}
