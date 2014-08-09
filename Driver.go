@@ -122,12 +122,12 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) error {
 		deviceInfo: deviceInfo,
 	}
 
-	log.Printf("Got device : %d", deviceInfo.IeeeAddress)
+	log.Printf("Got device : %d", *deviceInfo.IeeeAddress)
 
 	spew.Dump(deviceInfo)
 
 	for _, endpoint := range deviceInfo.SimpleDescList {
-		log.Printf("Got endpoint : %d", endpoint.EndpointId)
+		log.Printf("Got endpoint : %d", *endpoint.EndpointId)
 
 		if containsUInt32(endpoint.InputClusters, ClusterIDOnOff) {
 			log.Printf("This endpoint has on/off cluster")
@@ -139,7 +139,10 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) error {
 				},
 			}
 
-			onOff.init()
+			err := onOff.init()
+			if err != nil {
+				log.Printf("Failed initialising on/off channel: %s", err)
+			}
 
 		}
 
@@ -153,7 +156,10 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) error {
 				},
 			}
 
-			power.init()
+			err := power.init()
+			if err != nil {
+				log.Printf("Failed initialising power channel: %s", err)
+			}
 
 		}
 

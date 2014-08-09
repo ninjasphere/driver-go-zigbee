@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"time"
 
 	"github.com/ninjasphere/go-zigbee/gateway"
 )
@@ -19,7 +21,7 @@ func (c *PowerChannel) init() error {
 	maxReportInterval := uint32(120)
 	reportableChange := uint32(1)
 
-	reportingRequest := &gateway.GwSetAttributeReportingReq{
+	request := &gateway.GwSetAttributeReportingReq{
 		DstAddress: &gateway.GwAddressStructT{
 			AddressType: gateway.GwAddressTypeT_UNICAST.Enum(),
 			IeeeAddr:    c.device.deviceInfo.IeeeAddress,
@@ -35,20 +37,13 @@ func (c *PowerChannel) init() error {
 		}},
 	}
 
-	confirmation := &gateway.GwZigbeeGenericCnf{}
-
-	err := c.device.driver.gatewayConn.SendCommand(reportingRequest, confirmation)
+	response := &gateway.GwSetAttributeReportingRspInd{}
+	err := c.device.driver.gatewayConn.SendAsyncCommand(request, response, 2*time.Second)
 	if err != nil {
-		log.Fatalf("Failed to enable reporting on power device: %s", err)
+		return fmt.Errorf("Error enabling power reporting: %s", err)
 	}
-	if confirmation.Status.String() != "STATUS_SUCCESS" {
-		log.Fatalf("Failed to enable reporting on power device. Status:%s", confirmation.Status.String())
-	}
-
-	reportingResponse := &gateway.GwSetAttributeReportingRspInd{}
-	err = c.device.driver.gatewayConn.WaitForSequenceResponse(confirmation.SequenceNumber, reportingResponse)
-	if err != nil {
-		log.Fatalf("Failed to get power reporting response: %s", err)
+	if response.Status.String() != "STATUS_SUCCESS" {
+		return fmt.Errorf("Failed to enable power reporting. status: %s", response.Status.String())
 	}
 
 	return nil
