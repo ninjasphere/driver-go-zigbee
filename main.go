@@ -29,15 +29,13 @@ func main() {
 		log.Fatalf("Failed to start ZigBee driver: %s", err)
 	}
 
-	err = driver.FetchDeviceList()
-	if err != nil {
-		log.Fatalf("Failed to get device list: %s", err)
-	}
+	//driver.Reset(true)
 
 	err = driver.PermitJoin(120)
 	if err != nil {
 		log.Fatalf("Failed to enable joining: %s", err)
 	}
+
 	/*
 
 				toggleRequest := &gateway.DevSetOnOffStateReq{

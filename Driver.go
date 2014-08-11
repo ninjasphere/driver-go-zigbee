@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/bitly/go-simplejson"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-ninja"
 	"github.com/ninjasphere/go-zigbee"
@@ -37,15 +38,24 @@ type Driver struct {
 type Device struct {
 	driver     *Driver
 	deviceInfo *nwkmgr.NwkDeviceInfoT
+	bus        *ninja.DeviceBus
 	channels   []Channel
 }
 
 type Channel struct {
 	device   *Device
 	endpoint *nwkmgr.NwkSimpleDescriptorT
+	bus      *ninja.ChannelBus
+}
+
+func (d *Driver) Reset(hard bool) error {
+	return d.nwkmgrConn.Reset(hard)
 }
 
 func (d *Driver) PermitJoin(time uint32) error {
+
+	log.Printf("Pemitting join for %d seconds", time)
+
 	//joinTime := uint32(30)
 	permitJoinRequest := &nwkmgr.NwkSetPermitJoinReq{
 		PermitJoinTime: &time,
@@ -85,6 +95,7 @@ func (d *Driver) Connect(cfg *ZStackConfig) error {
 	if err != nil {
 		return fmt.Errorf("Error connecting to nwkmgr %s", err)
 	}
+	d.nwkmgrConn.OnDeviceFound = d.onDeviceFound
 
 	d.otaConn, err = zigbee.ConnectToOtaServer(cfg.Hostname, cfg.OtasrvrPort)
 	if err != nil {
@@ -96,30 +107,31 @@ func (d *Driver) Connect(cfg *ZStackConfig) error {
 		log.Printf("Error connecting to gateway %s", err)
 	}
 
+	d.nwkmgrConn.FetchDeviceList()
+
 	return nil
 
 }
 
-func (d *Driver) FetchDeviceList() error {
-	deviceListResponse := &nwkmgr.NwkGetDeviceListCnf{}
+func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
-	err := d.nwkmgrConn.SendCommand(&nwkmgr.NwkGetDeviceListReq{}, deviceListResponse)
-	if err != nil {
-		log.Fatalf("Failed to get device list: %s", err)
-	}
-	log.Printf("Found %d device(s): ", len(deviceListResponse.DeviceList))
+	/*sigs, _ := simplejson.NewJson([]byte(`{
+	    "ninja:manufacturer": "Phillips",
+	    "ninja:productName": "Hue",
+	    "manufacturer:productModelId": "",
+	    "ninja:productType": "Light",
+	    "ninja:thingType": "light"
+	}`))*/
 
-	for _, deviceInfo := range deviceListResponse.DeviceList {
-		d.onDeviceFound(deviceInfo)
-	}
+	sigs, _ := simplejson.NewJson([]byte(`{
+  }`))
 
-	return nil
-}
+	deviceBus, _ := d.bus.AnnounceDevice(fmt.Sprintf("%X", *deviceInfo.IeeeAddress), "zigbee", "Unknown Device 2 FIXME", sigs)
 
-func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) error {
 	device := &Device{
 		driver:     d,
 		deviceInfo: deviceInfo,
+		bus:        deviceBus,
 	}
 
 	log.Printf("Got device : %d", *deviceInfo.IeeeAddress)
@@ -167,7 +179,6 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) error {
 
 	d.devices = append(d.devices, device)
 
-	return nil
 }
 
 func getCurDir() string {

@@ -5,11 +5,34 @@ import (
 	"log"
 	"time"
 
+	"github.com/bitly/go-simplejson"
 	"github.com/ninjasphere/go-zigbee/gateway"
 )
 
 type OnOffChannel struct {
 	Channel
+}
+
+// -------- On/Off Protocol --------
+
+func (c *OnOffChannel) TurnOn() error {
+	return c.setState(gateway.GwOnOffStateT_ON_STATE.Enum())
+}
+
+func (c *OnOffChannel) TurnOff() error {
+	return c.setState(gateway.GwOnOffStateT_OFF_STATE.Enum())
+}
+
+func (c *OnOffChannel) Toggle() error {
+	return c.setState(gateway.GwOnOffStateT_TOGGLE_STATE.Enum())
+}
+
+func (c *OnOffChannel) Set(state bool) error {
+	if state {
+		return c.TurnOn()
+	}
+
+	return c.TurnOff()
 }
 
 func (c *OnOffChannel) init() error {
@@ -35,6 +58,7 @@ func (c *OnOffChannel) init() error {
 	}
 
 	response := &gateway.GwSetAttributeReportingRspInd{}
+
 	err := c.device.driver.gatewayConn.SendAsyncCommand(request, response, 2*time.Second)
 	if err != nil {
 		return fmt.Errorf("Error enabling on/off reporting: %s", err)
@@ -43,19 +67,39 @@ func (c *OnOffChannel) init() error {
 		return fmt.Errorf("Failed to enable on/off reporting. status: %s", response.Status.String())
 	}
 
+	methods := []string{"turnOn", "turnOff", "set", "toggle"}
+	events := []string{"state"}
+	bus, _ := c.device.bus.AnnounceChannel("on-off", "on-off", methods, events, func(method string, payload *simplejson.Json) {
+		switch method {
+		case "turnOn":
+			c.TurnOn()
+		case "turnOff":
+			c.TurnOff()
+		case "toggle":
+			c.Toggle()
+		case "set":
+			state, _ := payload.GetIndex(0).Bool()
+			c.Set(state)
+		default:
+			log.Printf("On-off got an unknown method %s", method)
+			return
+		}
+	})
+
+	c.bus = bus
+
+	go func() {
+		for {
+			err := c.fetchState()
+			if err != nil {
+				log.Printf("Failed to poll for on/off state %s", err)
+			}
+			time.Sleep(10 * time.Second)
+		}
+	}()
+
 	return nil
-}
 
-func (c *OnOffChannel) turnOn() error {
-	return c.setState(gateway.GwOnOffStateT_ON_STATE.Enum())
-}
-
-func (c *OnOffChannel) turnOff() error {
-	return c.setState(gateway.GwOnOffStateT_OFF_STATE.Enum())
-}
-
-func (c *OnOffChannel) toggle() error {
-	return c.setState(gateway.GwOnOffStateT_TOGGLE_STATE.Enum())
 }
 
 func (c *OnOffChannel) setState(state *gateway.GwOnOffStateT) error {
@@ -75,6 +119,33 @@ func (c *OnOffChannel) setState(state *gateway.GwOnOffStateT) error {
 	if response.Status.String() != "STATUS_SUCCESS" {
 		return fmt.Errorf("Failed to set on/off state. status: %s", response.Status.String())
 	}
+
+	return nil
+}
+
+func (c *OnOffChannel) fetchState() error {
+	request := &gateway.DevGetOnOffStateReq{
+		DstAddress: &gateway.GwAddressStructT{
+			AddressType: gateway.GwAddressTypeT_UNICAST.Enum(),
+			IeeeAddr:    c.device.deviceInfo.IeeeAddress,
+		},
+	}
+
+	response := &gateway.DevGetOnOffStateRspInd{}
+	err := c.device.driver.gatewayConn.SendAsyncCommand(request, response, 10*time.Second)
+	if err != nil {
+		return fmt.Errorf("Error getting on/off state : %s", err)
+	}
+	if response.Status.String() != "STATUS_SUCCESS" {
+		return fmt.Errorf("Failed to get on/off state. status: %s", response.Status.String())
+	}
+
+	state := false
+	if *response.StateValue == gateway.GwOnOffStateValueT_ON {
+		state = true
+	}
+
+	log.Printf("On/off state %t", state)
 
 	return nil
 }
