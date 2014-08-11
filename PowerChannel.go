@@ -38,7 +38,7 @@ func (c *PowerChannel) init() error {
 	}
 
 	response := &gateway.GwSetAttributeReportingRspInd{}
-	err := c.device.driver.gatewayConn.SendAsyncCommand(request, response, 2*time.Second)
+	err := c.device.driver.gatewayConn.SendAsyncCommand(request, response, 20*time.Second)
 	if err != nil {
 		return fmt.Errorf("Error enabling power reporting: %s", err)
 	}

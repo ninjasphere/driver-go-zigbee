@@ -59,17 +59,18 @@ func (c *OnOffChannel) init() error {
 
 	response := &gateway.GwSetAttributeReportingRspInd{}
 
-	err := c.device.driver.gatewayConn.SendAsyncCommand(request, response, 2*time.Second)
+	err := c.device.driver.gatewayConn.SendAsyncCommand(request, response, 20*time.Second)
 	if err != nil {
-		return fmt.Errorf("Error enabling on/off reporting: %s", err)
-	}
-	if response.Status.String() != "STATUS_SUCCESS" {
-		return fmt.Errorf("Failed to enable on/off reporting. status: %s", response.Status.String())
+		log.Printf("Error enabling on/off reporting: %s", err)
+	} else if response.Status.String() != "STATUS_SUCCESS" {
+		log.Printf("Failed to enable on/off reporting. status: %s", response.Status.String())
 	}
 
 	methods := []string{"turnOn", "turnOff", "set", "toggle"}
 	events := []string{"state"}
 	bus, _ := c.device.bus.AnnounceChannel("on-off", "on-off", methods, events, func(method string, payload *simplejson.Json) {
+		log.Printf("INCOMING ON/OFF : %s", method)
+
 		switch method {
 		case "turnOn":
 			c.TurnOn()
@@ -120,7 +121,7 @@ func (c *OnOffChannel) setState(state *gateway.GwOnOffStateT) error {
 		return fmt.Errorf("Failed to set on/off state. status: %s", response.Status.String())
 	}
 
-	return nil
+	return c.fetchState()
 }
 
 func (c *OnOffChannel) fetchState() error {
@@ -140,12 +141,12 @@ func (c *OnOffChannel) fetchState() error {
 		return fmt.Errorf("Failed to get on/off state. status: %s", response.Status.String())
 	}
 
-	state := false
+	payload, _ := simplejson.NewJson([]byte("false"))
 	if *response.StateValue == gateway.GwOnOffStateValueT_ON {
-		state = true
+		payload, _ = simplejson.NewJson([]byte("true"))
 	}
 
-	log.Printf("On/off state %t", state)
+	c.bus.SendEvent("state", payload)
 
 	return nil
 }
