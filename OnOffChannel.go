@@ -68,7 +68,7 @@ func (c *OnOffChannel) init() error {
 
 	methods := []string{"turnOn", "turnOff", "set", "toggle"}
 	events := []string{"state"}
-	bus, _ := c.device.bus.AnnounceChannel("on-off", "on-off", methods, events, func(method string, payload *simplejson.Json) {
+	c.bus, err = c.device.bus.AnnounceChannel("on-off", "on-off", methods, events, func(method string, payload *simplejson.Json) {
 		log.Printf("INCOMING ON/OFF : %s", method)
 
 		switch method {
@@ -87,7 +87,9 @@ func (c *OnOffChannel) init() error {
 		}
 	})
 
-	c.bus = bus
+	if err != nil {
+		log.Fatalf("Failed to announce on/off channel: %s", err)
+	}
 
 	go func() {
 		for {
