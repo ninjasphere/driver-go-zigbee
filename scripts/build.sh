@@ -27,6 +27,7 @@ export GOPATH="$(pwd)/.gopath"
 # Clone our internal commons package
 if [ ! -d $GOPATH/src/github.com/ninjasphere/go-ninja ]; then
 	git clone git@github.com:ninjasphere/go-ninja.git $GOPATH/src/github.com/ninjasphere/go-ninja
+	git clone git@github.com:ninjasphere/go-zigbee.git $GOPATH/src/github.com/ninjasphere/go-zigbee
 fi
 
 # move the working path and build
