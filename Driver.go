@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/bitly/go-simplejson"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-ninja"
 	"github.com/ninjasphere/go-zigbee"
 	"github.com/ninjasphere/go-zigbee/gateway"
@@ -14,9 +15,11 @@ import (
 )
 
 const (
-	ClusterIDBasic uint32 = 0x00
-	ClusterIDOnOff uint32 = 0x06
-	ClusterIDPower uint32 = 0x702
+	ClusterIDBasic    uint32 = 0x00
+	ClusterIDOnOff    uint32 = 0x06
+	ClusterIDTemp     uint32 = 0x402
+	ClusterIDHumidity uint32 = 0x405
+	ClusterIDPower    uint32 = 0x702
 )
 
 type ZStackConfig struct {
@@ -32,9 +35,17 @@ type Driver struct {
 
 	devices []*Device
 
+	NetworkReady chan bool
+
 	nwkmgrConn  *zigbee.ZStackNwkMgr
 	gatewayConn *zigbee.ZStackGateway
 	otaConn     *zigbee.ZStackOta
+}
+
+func NewDriver() *Driver {
+	return &Driver{
+		NetworkReady: make(chan bool),
+	}
 }
 
 type Device struct {
@@ -82,7 +93,7 @@ func (d *Driver) PermitJoin(time uint32) error {
 	return nil
 }
 
-func (d *Driver) Connect(cfg *ZStackConfig) error {
+func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 
 	conn, err := ninja.Connect("com.ninjablocks.zigbee")
 	if err != nil {
@@ -100,7 +111,17 @@ func (d *Driver) Connect(cfg *ZStackConfig) error {
 	if err != nil {
 		return fmt.Errorf("Error connecting to nwkmgr %s", err)
 	}
-	d.nwkmgrConn.OnDeviceFound = d.onDeviceFound
+	d.nwkmgrConn.OnDeviceFound = func(deviceInfo *nwkmgr.NwkDeviceInfoT) {
+		d.onDeviceFound(deviceInfo)
+	}
+
+	done := false
+	d.nwkmgrConn.OnNetworkReady = func() {
+		if !done {
+			done = true
+			networkReady <- true
+		}
+	}
 
 	d.otaConn, err = zigbee.ConnectToOtaServer(cfg.Hostname, cfg.OtasrvrPort)
 	if err != nil {
@@ -112,9 +133,13 @@ func (d *Driver) Connect(cfg *ZStackConfig) error {
 		log.Printf("Error connecting to gateway %s", err)
 	}
 
-	d.nwkmgrConn.FetchDeviceList()
-
 	return nil
+
+}
+
+func (d *Driver) FetchDevices() error {
+
+	return d.nwkmgrConn.FetchDeviceList()
 
 }
 
@@ -197,6 +222,8 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 	name := fmt.Sprintf("%s by %s", device.ModelIdentifier, device.ManufacturerName)
 
+	spew.Dump(deviceInfo)
+
 	device.bus, _ = d.bus.AnnounceDevice(fmt.Sprintf("%X", *deviceInfo.IeeeAddress), "zigbee", name, sigs)
 
 	log.Printf("Got device : %d", *deviceInfo.IeeeAddress)
@@ -234,6 +261,40 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 			err := power.init()
 			if err != nil {
 				log.Printf("Failed initialising power channel: %s", err)
+			}
+
+		}
+
+		if containsUInt32(endpoint.InputClusters, ClusterIDTemp) {
+			log.Printf("This endpoint has temperature cluster")
+
+			temp := &TempChannel{
+				Channel{
+					device:   device,
+					endpoint: endpoint,
+				},
+			}
+
+			err := temp.init()
+			if err != nil {
+				log.Printf("Failed initialising temp channel: %s", err)
+			}
+
+		}
+
+		if containsUInt32(endpoint.InputClusters, ClusterIDHumidity) {
+			log.Printf("This endpoint has humidity cluster")
+
+			temp := &TempChannel{
+				Channel{
+					device:   device,
+					endpoint: endpoint,
+				},
+			}
+
+			err := temp.init()
+			if err != nil {
+				log.Printf("Failed initialising humidity channel: %s", err)
 			}
 
 		}

@@ -13,7 +13,7 @@ var _ = fmt.Printf
 var _ = spew.Dump
 
 var config = &ZStackConfig{
-	Hostname:    "beaglebone.local",
+	Hostname:    "elliotdev.local",
 	OtasrvrPort: 2525,
 	GatewayPort: 2541,
 	NwkmgrPort:  2540,
@@ -23,18 +23,41 @@ func main() {
 
 	//spew.Dump(bus)
 
-	driver := new(Driver)
-	err := driver.Connect(config)
+	driver := NewDriver()
+
+	networkReady := make(chan bool)
+
+	err := driver.Connect(config, networkReady)
 	if err != nil {
 		log.Fatalf("Failed to start ZigBee driver: %s", err)
 	}
 
 	//driver.Reset(true)
 
+	//driver.FetchDevices()
+
+	/*err = driver.PermitJoin(120)
+	if err != nil {
+		log.Fatalf("Failed to enable joining: %s", err)
+	}*/
+
+	//driver.Reset(false)
+
+	//log.Println("Waiting!")
+
+	//select {
+	//case <-networkReady:
+	log.Println("Driver starting!")
 	err = driver.PermitJoin(120)
 	if err != nil {
 		log.Fatalf("Failed to enable joining: %s", err)
 	}
+	driver.FetchDevices()
+	//case <-time.After(20 * time.Second):
+	//log.Println("Timeout waiting for network ready. Soft-resetting cc2530")
+	//driver.Reset(false)
+	//os.Exit(0)
+	//}
 
 	/*
 

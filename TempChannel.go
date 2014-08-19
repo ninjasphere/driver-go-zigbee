@@ -6,20 +6,19 @@ import (
 	"time"
 
 	"github.com/bitly/go-simplejson"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-zigbee/gateway"
 )
 
-type PowerChannel struct {
+type TempChannel struct {
 	Channel
 }
 
-func (c *PowerChannel) init() error {
-	log.Printf("Initialising power channel of device %d", *c.device.deviceInfo.IeeeAddress)
+func (c *TempChannel) init() error {
+	log.Printf("Initialising Temp channel of device %d", *c.device.deviceInfo.IeeeAddress)
 
-	clusterID := ClusterIDPower
+	clusterID := ClusterIDTemp
 	instantaneousDemandAttributeID := uint32(0x0400)
-	minReportInterval := uint32(1)
+	minReportInterval := uint32(10)
 	maxReportInterval := uint32(120)
 	reportableChange := uint32(1)
 
@@ -42,24 +41,24 @@ func (c *PowerChannel) init() error {
 	response := &gateway.GwSetAttributeReportingRspInd{}
 	err := c.device.driver.gatewayConn.SendAsyncCommand(request, response, 20*time.Second)
 	if err != nil {
-		log.Printf("Error enabling power reporting: %s", err)
+		log.Printf("Error enabling Temp reporting: %s", err)
 	} else if response.Status.String() != "STATUS_SUCCESS" {
-		log.Printf("Failed to enable power reporting. status: %s", response.Status.String())
+		log.Printf("Failed to enable Temp reporting. status: %s", response.Status.String())
 	}
 
-	c.bus, _ = c.device.bus.AnnounceChannel("power", "power", []string{}, []string{"state"}, func(method string, payload *simplejson.Json) {
-		log.Printf("Power got an unknown method %s", method)
+	c.bus, err = c.device.bus.AnnounceChannel("temperature", "temperature", []string{}, []string{"state"}, func(method string, payload *simplejson.Json) {
+		log.Printf("Temp got an unknown method %s", method)
 	})
 
 	if err != nil {
-		log.Fatalf("Failed to announce power channel: %s", err)
+		log.Fatalf("Failed to announce temperature channel: %s", err)
 	}
 
 	go func() {
 		for {
 			err := c.fetchState()
 			if err != nil {
-				log.Printf("Failed to poll for power level %s", err)
+				log.Printf("Failed to poll for Temperature %s", err)
 			}
 			time.Sleep(10 * time.Second)
 		}
@@ -68,30 +67,28 @@ func (c *PowerChannel) init() error {
 	return nil
 }
 
-func (c *PowerChannel) fetchState() error {
+func (c *TempChannel) fetchState() error {
 
-	request := &gateway.DevGetPowerReq{
+	request := &gateway.DevGetTempReq{
 		DstAddress: &gateway.GwAddressStructT{
 			AddressType: gateway.GwAddressTypeT_UNICAST.Enum(),
 			IeeeAddr:    c.device.deviceInfo.IeeeAddress,
 		},
 	}
 
-	response := &gateway.DevGetPowerRspInd{}
+	response := &gateway.DevGetTempRspInd{}
 	err := c.device.driver.gatewayConn.SendAsyncCommand(request, response, 10*time.Second)
 	if err != nil {
-		return fmt.Errorf("Error getting power level : %s", err)
+		return fmt.Errorf("Error getting Temp level : %s", err)
 	}
 	if response.Status.String() != "STATUS_SUCCESS" {
-		return fmt.Errorf("Failed to get power level. status: %s", response.Status.String())
+		return fmt.Errorf("Failed to get Temp level. status: %s", response.Status.String())
 	}
 
-	log.Printf("Got power value %d", *response.PowerValue)
+	log.Printf("Got Temp value %d", *response.TemperatureValue)
 
 	payload := simplejson.New()
-	payload.Set("value", *response.PowerValue)
-
-	spew.Dump("THE BUS 2", c.bus)
+	payload.Set("value", float64(*response.TemperatureValue)/100)
 
 	c.bus.SendEvent("state", payload)
 
