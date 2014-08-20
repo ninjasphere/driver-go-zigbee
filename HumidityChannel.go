@@ -88,7 +88,7 @@ func (c *HumidityChannel) fetchState() error {
 	log.Printf("Got Humidity value %d", *response.HumidityValue)
 
 	payload := simplejson.New()
-	payload.Set("value", float64(*response.HumidityValue)/100)
+	payload.Set("value", float64(*response.HumidityValue)/0x2710)
 
 	c.bus.SendEvent("state", payload)
 

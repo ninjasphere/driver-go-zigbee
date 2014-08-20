@@ -93,6 +93,7 @@ func (c *OnOffChannel) init() error {
 
 	go func() {
 		for {
+			log.Printf("Polling for on/off")
 			err := c.fetchState()
 			if err != nil {
 				log.Printf("Failed to poll for on/off state %s", err)

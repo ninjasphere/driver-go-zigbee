@@ -33,7 +33,7 @@ type Driver struct {
 	conn *ninja.NinjaConnection
 	bus  *ninja.DriverBus
 
-	devices []*Device
+	devices map[uint64]*Device
 
 	NetworkReady chan bool
 
@@ -95,6 +95,8 @@ func (d *Driver) PermitJoin(time uint32) error {
 
 func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 
+	d.devices = make(map[uint64]*Device)
+
 	conn, err := ninja.Connect("com.ninjablocks.zigbee")
 	if err != nil {
 		return fmt.Errorf("Could not connect to MQTT: %s", err)
@@ -125,16 +127,62 @@ func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 
 	d.otaConn, err = zigbee.ConnectToOtaServer(cfg.Hostname, cfg.OtasrvrPort)
 	if err != nil {
-		fmt.Errorf("Error connecting to ota server %s", err)
+		return fmt.Errorf("Error connecting to ota server %s", err)
 	}
 
 	d.gatewayConn, err = zigbee.ConnectToGatewayServer(cfg.Hostname, cfg.GatewayPort)
 	if err != nil {
-		log.Printf("Error connecting to gateway %s", err)
+		return fmt.Errorf("Error connecting to gateway %s", err)
 	}
 
-	return nil
+	/*keyResponse := &nwkmgr.NwkZigbeeGenericCnf{}
 
+	keyRequest := &nwkmgr.NwkChangeNwkKeyReq{
+		NewKey: []byte{0x5a, 0x69, 0x67, 0x42, 0x65, 0x65, 0x41, 0x6c, 0x6c, 0x69, 0x61, 0x6e, 0x63, 0x65, 0x30, 0x39},
+	}
+
+	err = d.nwkmgrConn.SendCommand(keyRequest, keyResponse)
+	if err != nil {
+		return fmt.Errorf("Failed setting network key: %s", err)
+	}
+
+	spew.Dump(keyResponse)
+	log.Println("Sleeping for 10 seconds after setting network key")
+
+	time.Sleep(10 * time.Second)*/
+
+	networkInfo := &nwkmgr.NwkZigbeeNwkInfoCnf{}
+
+	err = d.nwkmgrConn.SendCommand(&nwkmgr.NwkZigbeeNwkInfoReq{}, networkInfo)
+	if err != nil {
+		return fmt.Errorf("Failed getting network info: %s", err)
+	}
+
+	if *networkInfo.Status == nwkmgr.NwkNetworkStatusT_NWK_DOWN {
+		return fmt.Errorf("The ZigBee network is down")
+	}
+
+	localDevice := &nwkmgr.NwkGetLocalDeviceInfoCnf{}
+
+	err = d.nwkmgrConn.SendCommand(&nwkmgr.NwkGetLocalDeviceInfoReq{}, localDevice)
+	if err != nil {
+		return fmt.Errorf("Failed getting local device info: %s", err)
+	}
+
+	spew.Dump("device info", localDevice.String())
+
+	networkKey := &nwkmgr.NwkGetNwkKeyCnf{}
+
+	err = d.nwkmgrConn.SendCommand(&nwkmgr.NwkGetNwkKeyReq{}, networkKey)
+	if err != nil {
+		return fmt.Errorf("Failed getting network key: %s", err)
+	}
+
+	spew.Dump(networkKey)
+
+	log.Printf("Started coordinator. Channel:%d Pan ID:0x%X Key:% X", *networkInfo.NwkChannel, *networkInfo.PanId, networkKey.NewKey)
+
+	return nil
 }
 
 func (d *Driver) FetchDevices() error {
@@ -188,6 +236,10 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 	fmt.Printf("\n\n")
 	fmt.Printf("---- Found Device IEEE:%X ----\f", *deviceInfo.IeeeAddress)
+
+	if d.devices[*deviceInfo.IeeeAddress] != nil {
+		fmt.Printf("We've already seen this device")
+	}
 
 	/*sigs, _ := simplejson.NewJson([]byte(`{
 	    "ninja:manufacturer": "Phillips",
@@ -285,14 +337,14 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 		if containsUInt32(endpoint.InputClusters, ClusterIDHumidity) {
 			log.Printf("This endpoint has humidity cluster")
 
-			temp := &TempChannel{
+			humidity := &HumidityChannel{
 				Channel{
 					device:   device,
 					endpoint: endpoint,
 				},
 			}
 
-			err := temp.init()
+			err := humidity.init()
 			if err != nil {
 				log.Printf("Failed initialising humidity channel: %s", err)
 			}
@@ -301,7 +353,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 	}
 
-	d.devices = append(d.devices, device)
+	d.devices[*deviceInfo.IeeeAddress] = device
 
 	fmt.Printf("---- Finished Device IEEE:%X ----\n", *deviceInfo.IeeeAddress)
 

@@ -57,6 +57,7 @@ func (c *PowerChannel) init() error {
 
 	go func() {
 		for {
+			log.Printf("Polling for power")
 			err := c.fetchState()
 			if err != nil {
 				log.Printf("Failed to poll for power level %s", err)
