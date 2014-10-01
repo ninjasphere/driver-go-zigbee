@@ -64,7 +64,6 @@ type Device struct {
 type Channel struct {
 	device   *Device
 	endpoint *nwkmgr.NwkSimpleDescriptorT
-	channel  ninja.Channel
 }
 
 func (d *Driver) GetModuleInfo() *model.Module {
@@ -317,8 +316,8 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 				Channel{
 					device:   device,
 					endpoint: endpoint,
-					channel:  nil,
 				},
+				nil,
 			}
 
 			err := onOff.init()
@@ -336,6 +335,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 					device:   device,
 					endpoint: endpoint,
 				},
+				nil,
 			}
 
 			err := power.init()
@@ -353,6 +353,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 					device:   device,
 					endpoint: endpoint,
 				},
+				nil,
 			}
 
 			err := temp.init()
@@ -369,8 +370,8 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 				Channel{
 					device:   device,
 					endpoint: endpoint,
-					channel:  nil,
 				},
+				nil,
 			}
 
 			err := humidity.init()

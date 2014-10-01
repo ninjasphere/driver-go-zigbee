@@ -5,13 +5,13 @@ import (
 	"log"
 	"time"
 
-	"github.com/bitly/go-simplejson"
-	//	"github.com/ninjasphere/go-ninja/channels"
+	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/go-zigbee/gateway"
 )
 
 type TempChannel struct {
 	Channel
+	channel *channels.TemperatureChannel
 }
 
 func (c *TempChannel) init() error {
@@ -47,7 +47,7 @@ func (c *TempChannel) init() error {
 		log.Printf("Failed to enable Temp reporting. status: %s", response.Status.String())
 	}
 
-	//FIXME: c.channel = channels.NewTemperatureChannel(c)
+	c.channel = channels.NewTemperatureChannel(c)
 	err = c.device.conn.ExportChannel(c.device, c.channel, "temperature")
 	if err != nil {
 		log.Fatalf("Failed to announce temperature channel: %s", err)
@@ -86,10 +86,7 @@ func (c *TempChannel) fetchState() error {
 
 	log.Printf("Got Temp value %d", *response.TemperatureValue)
 
-	payload := simplejson.New()
-	payload.Set("value", float64(*response.TemperatureValue)/100)
-
-	c.device.sendEvent("state", payload)
+	c.channel.SendState(float64(*response.TemperatureValue)/100)
 
 	return nil
 }

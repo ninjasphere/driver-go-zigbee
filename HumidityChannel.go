@@ -5,13 +5,13 @@ import (
 	"log"
 	"time"
 
-	"github.com/bitly/go-simplejson"
-	// "github.com/ninjasphere/go-ninja/channels"
+	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/go-zigbee/gateway"
 )
 
 type HumidityChannel struct {
 	Channel
+	channel *channels.HumidityChannel
 }
 
 func (c *HumidityChannel) init() error {
@@ -47,8 +47,7 @@ func (c *HumidityChannel) init() error {
 		log.Printf("Failed to enable Humidity reporting. status: %s", response.Status.String())
 	}
 
-	//FIXME
-	// c.channel = channels.NewHumidityChannel(c.device)
+	c.channel = channels.NewHumidityChannel(c)
 	err = c.device.conn.ExportChannel(c.device, c.channel, "humidity")
 	if err != nil {
 		log.Printf("failed to export humidity channel")
@@ -91,10 +90,7 @@ func (c *HumidityChannel) fetchState() error {
 
 	log.Printf("Got Humidity value %d", *response.HumidityValue)
 
-	payload := simplejson.New()
-	payload.Set("value", float64(*response.HumidityValue)/0x2710)
-
-	c.device.sendEvent("state", payload)
+	c.channel.SendState(float64(*response.HumidityValue)/0x2710)
 
 	return nil
 }

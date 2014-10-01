@@ -5,13 +5,13 @@ import (
 	"log"
 	"time"
 
-	"github.com/bitly/go-simplejson"
 	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/go-zigbee/gateway"
 )
 
 type OnOffChannel struct {
 	Channel
+	channel	*channels.OnOffChannel
 }
 
 // -------- On/Off Protocol --------
@@ -126,12 +126,7 @@ func (c *OnOffChannel) fetchState() error {
 		return fmt.Errorf("Failed to get on/off state. status: %s", response.Status.String())
 	}
 
-	payload, _ := simplejson.NewJson([]byte("false"))
-	if *response.StateValue == gateway.GwOnOffStateValueT_ON {
-		payload, _ = simplejson.NewJson([]byte("true"))
-	}
-
-	c.device.sendEvent("state", payload)
+	c.channel.SendState(*response.StateValue == gateway.GwOnOffStateValueT_ON)
 
 	return nil
 }

@@ -5,13 +5,13 @@ import (
 	"log"
 	"time"
 
-	"github.com/bitly/go-simplejson"
-	//	"github.com/ninjasphere/go-ninja/channels"
+	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/go-zigbee/gateway"
 )
 
 type PowerChannel struct {
 	Channel
+	channel *channels.PowerChannel
 }
 
 func (c *PowerChannel) init() error {
@@ -47,7 +47,7 @@ func (c *PowerChannel) init() error {
 		log.Printf("Failed to enable power reporting. status: %s", response.Status.String())
 	}
 
-	//FIXME: c.channel = channels.NewPowerChannel(c)
+	c.channel = channels.NewPowerChannel(c)
 	err = c.device.conn.ExportChannel(c.device, c.channel, "power")
 	if err != nil {
 		log.Fatalf("Failed to announce power channel: %s", err)
@@ -87,10 +87,7 @@ func (c *PowerChannel) fetchState() error {
 
 	log.Printf("Got power value %d", *response.PowerValue)
 
-	payload := simplejson.New()
-	payload.Set("value", *response.PowerValue)
-
-	c.device.sendEvent("state", payload)
+	c.channel.SendState((float64)(*response.PowerValue))
 
 	return nil
 }
