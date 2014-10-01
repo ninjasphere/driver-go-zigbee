@@ -29,7 +29,7 @@ func (c *HumidityChannel) init() error {
 			EndpointId:  c.endpoint.EndpointId,
 		},
 		ClusterId: &clusterID,
-		AttributeReportList: []*gateway.GwAttributeReportT{&gateway.GwAttributeReportT{
+		AttributeReportList: []*gateway.GwAttributeReportT{{
 			AttributeId:       &instantaneousDemandAttributeID,
 			AttributeType:     gateway.GwZclAttributeDataTypesT_ZCL_DATATYPE_INT24.Enum(),
 			MinReportInterval: &minReportInterval,

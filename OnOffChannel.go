@@ -49,7 +49,7 @@ func (c *OnOffChannel) init() error {
 			IeeeAddr:    c.device.deviceInfo.IeeeAddress,
 		},
 		ClusterId: &clusterID,
-		AttributeReportList: []*gateway.GwAttributeReportT{&gateway.GwAttributeReportT{
+		AttributeReportList: []*gateway.GwAttributeReportT{{
 			AttributeId:       &attributeID,
 			AttributeType:     gateway.GwZclAttributeDataTypesT_ZCL_DATATYPE_BOOLEAN.Enum(),
 			MinReportInterval: &minReportInterval,
