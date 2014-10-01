@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bitly/go-simplejson"
+	//	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/go-zigbee/gateway"
 )
 
@@ -46,10 +47,8 @@ func (c *TempChannel) init() error {
 		log.Printf("Failed to enable Temp reporting. status: %s", response.Status.String())
 	}
 
-	c.bus, err = c.device.bus.AnnounceChannel("temperature", "temperature", []string{}, []string{"state"}, func(method string, payload *simplejson.Json) {
-		log.Printf("Temp got an unknown method %s", method)
-	})
-
+	//FIXME: c.channel = channels.NewTemperatureChannel(c)
+	err = c.device.conn.ExportChannel(c.device, c.channel, "temperature")
 	if err != nil {
 		log.Fatalf("Failed to announce temperature channel: %s", err)
 	}
@@ -90,7 +89,7 @@ func (c *TempChannel) fetchState() error {
 	payload := simplejson.New()
 	payload.Set("value", float64(*response.TemperatureValue)/100)
 
-	c.bus.SendEvent("state", payload)
+	c.device.sendEvent("state", payload)
 
 	return nil
 }

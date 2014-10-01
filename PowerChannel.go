@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/bitly/go-simplejson"
-	"github.com/davecgh/go-spew/spew"
+	//	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/go-zigbee/gateway"
 )
 
@@ -47,10 +47,8 @@ func (c *PowerChannel) init() error {
 		log.Printf("Failed to enable power reporting. status: %s", response.Status.String())
 	}
 
-	c.bus, _ = c.device.bus.AnnounceChannel("power", "power", []string{}, []string{"state"}, func(method string, payload *simplejson.Json) {
-		log.Printf("Power got an unknown method %s", method)
-	})
-
+	//FIXME: c.channel = channels.NewPowerChannel(c)
+	err = c.device.conn.ExportChannel(c.device, c.channel, "power")
 	if err != nil {
 		log.Fatalf("Failed to announce power channel: %s", err)
 	}
@@ -92,9 +90,7 @@ func (c *PowerChannel) fetchState() error {
 	payload := simplejson.New()
 	payload.Set("value", *response.PowerValue)
 
-	spew.Dump("THE BUS 2", c.bus)
-
-	c.bus.SendEvent("state", payload)
+	c.device.sendEvent("state", payload)
 
 	return nil
 }

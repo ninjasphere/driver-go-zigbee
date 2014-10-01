@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bitly/go-simplejson"
+	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/go-zigbee/gateway"
 )
 
@@ -23,11 +24,11 @@ func (c *OnOffChannel) TurnOff() error {
 	return c.setState(gateway.GwOnOffStateT_OFF_STATE.Enum())
 }
 
-func (c *OnOffChannel) Toggle() error {
+func (c *OnOffChannel) ToggleOnOff() error {
 	return c.setState(gateway.GwOnOffStateT_TOGGLE_STATE.Enum())
 }
 
-func (c *OnOffChannel) Set(state bool) error {
+func (c *OnOffChannel) SetOnOff(state bool) error {
 	if state {
 		return c.TurnOn()
 	}
@@ -66,27 +67,8 @@ func (c *OnOffChannel) init() error {
 		log.Printf("Failed to enable on/off reporting. status: %s", response.Status.String())
 	}
 
-	methods := []string{"turnOn", "turnOff", "set", "toggle"}
-	events := []string{"state"}
-	c.bus, err = c.device.bus.AnnounceChannel("on-off", "on-off", methods, events, func(method string, payload *simplejson.Json) {
-		log.Printf("INCOMING ON/OFF : %s", method)
-
-		switch method {
-		case "turnOn":
-			c.TurnOn()
-		case "turnOff":
-			c.TurnOff()
-		case "toggle":
-			c.Toggle()
-		case "set":
-			state, _ := payload.GetIndex(0).Bool()
-			c.Set(state)
-		default:
-			log.Printf("On-off got an unknown method %s", method)
-			return
-		}
-	})
-
+	c.channel = channels.NewOnOffChannel(c)
+	err = c.device.conn.ExportChannel(c.device, c.channel, "on-off")
 	if err != nil {
 		log.Fatalf("Failed to announce on/off channel: %s", err)
 	}
@@ -149,7 +131,7 @@ func (c *OnOffChannel) fetchState() error {
 		payload, _ = simplejson.NewJson([]byte("true"))
 	}
 
-	c.bus.SendEvent("state", payload)
+	c.device.sendEvent("state", payload)
 
 	return nil
 }

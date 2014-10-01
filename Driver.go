@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/bitly/go-simplejson"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/ninjasphere/go-ninja"
+	"github.com/ninjasphere/go-ninja/api"
+	"github.com/ninjasphere/go-ninja/model"
 	"github.com/ninjasphere/go-zigbee"
 	"github.com/ninjasphere/go-zigbee/gateway"
 	"github.com/ninjasphere/go-zigbee/nwkmgr"
@@ -22,6 +22,10 @@ const (
 	ClusterIDPower    uint32 = 0x702
 )
 
+var (
+	info = ninja.LoadModuleInfo("./package.json")
+)
+
 type ZStackConfig struct {
 	Hostname    string
 	OtasrvrPort int
@@ -30,8 +34,8 @@ type ZStackConfig struct {
 }
 
 type Driver struct {
-	conn *ninja.NinjaConnection
-	bus  *ninja.DriverBus
+	conn      *ninja.Connection
+	sendEvent func(event string, payload interface{}) error
 
 	devices map[uint64]*Device
 
@@ -49,19 +53,26 @@ func NewDriver() *Driver {
 }
 
 type Device struct {
-	ManufacturerName string
-	ModelIdentifier  string
-
+	info       *model.Device
 	driver     *Driver
 	deviceInfo *nwkmgr.NwkDeviceInfoT
-	bus        *ninja.DeviceBus
+	conn       *ninja.Connection
 	channels   []Channel
+	sendEvent  func(event string, payload interface{}) error
 }
 
 type Channel struct {
 	device   *Device
 	endpoint *nwkmgr.NwkSimpleDescriptorT
-	bus      *ninja.ChannelBus
+	channel  ninja.Channel
+}
+
+func (d *Driver) GetModuleInfo() *model.Module {
+	return info
+}
+
+func (d *Driver) SetEventHandler(sendEvent func(event string, payload interface{}) error) {
+	d.sendEvent = sendEvent
 }
 
 func (d *Driver) Reset(hard bool) error {
@@ -104,9 +115,9 @@ func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 
 	d.conn = conn
 
-	d.bus, err = conn.AnnounceDriver("com.ninjablocks.zigbee", "driver-zigbee", getCurDir())
+	err = conn.ExportDriver(d)
 	if err != nil {
-		return fmt.Errorf("Could not get driver bus: %s", err)
+		return fmt.Errorf("Could not export driver: %s", err)
 	}
 
 	d.nwkmgrConn, err = zigbee.ConnectToNwkMgrServer(cfg.Hostname, cfg.NwkmgrPort)
@@ -191,6 +202,18 @@ func (d *Driver) FetchDevices() error {
 
 }
 
+func (d *Device) GetDriver() ninja.Driver {
+	return d.driver
+}
+
+func (d *Device) GetDeviceInfo() *model.Device {
+	return d.info
+}
+
+func (d *Device) SetEventHandler(sendEvent func(event string, payload interface{}) error) {
+	d.sendEvent = sendEvent
+}
+
 func (d *Device) getBasicInfo() error {
 
 	log.Printf("Getting basic information from %X", *d.deviceInfo.IeeeAddress)
@@ -217,17 +240,35 @@ func (d *Device) getBasicInfo() error {
 		return fmt.Errorf("Failed to get basic device information. status: %s", response.Status.String())
 	}
 
+	sigs := make(map[string]string)
+
+	manufacturerName := ""
+	modelIdentifier := ""
+
 	for _, attribute := range response.AttributeRecordList {
 
 		switch *attribute.AttributeId {
 		case ManufacturerNameAttribute:
-			d.ManufacturerName = string(attribute.AttributeValue)
+			manufacturerName = string(attribute.AttributeValue)
 		case ModelIdentifierAttribute:
-			d.ModelIdentifier = string(attribute.AttributeValue)
+			modelIdentifier = string(attribute.AttributeValue)
 		default:
 			log.Printf("Unknown attribute returned when finding basic info %s", *attribute.AttributeId)
 		}
 	}
+
+	sigs["zigbee:ManufacturerName"] = manufacturerName
+	sigs["zigbee:ModelIdentifier"] = modelIdentifier
+
+	name := fmt.Sprintf("%s by %s", modelIdentifier, manufacturerName)
+	id := fmt.Sprintf("%X", d.deviceInfo.IeeeAddress)
+
+	d.info.Name = &name
+
+	d.info.Signatures = &sigs
+	d.info.NaturalIDType = "zigbee"
+	d.info.NaturalID = id
+	d.info.Name = &name
 
 	return nil
 }
@@ -250,6 +291,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 	}`))*/
 
 	device := &Device{
+		info:       &model.Device{},
 		driver:     d,
 		deviceInfo: deviceInfo,
 	}
@@ -259,24 +301,9 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 		log.Printf("Failed to get basic info: %s", err)
 	}
 
-	sigs, _ := simplejson.NewJson([]byte(`{
-	}`))
-	if device.ManufacturerName != "" {
-		sigs.Set("zigbee:ManufacturerName", device.ManufacturerName)
-	} else {
-		device.ManufacturerName = "Unknown"
-	}
-	if device.ModelIdentifier != "" {
-		sigs.Set("zigbee:ModelIdentifier", device.ModelIdentifier)
-	} else {
-		device.ModelIdentifier = fmt.Sprintf("MAC:%X", *deviceInfo.IeeeAddress)
-	}
-
-	name := fmt.Sprintf("%s by %s", device.ModelIdentifier, device.ManufacturerName)
-
 	spew.Dump(deviceInfo)
 
-	device.bus, _ = d.bus.AnnounceDevice(fmt.Sprintf("%X", *deviceInfo.IeeeAddress), "zigbee", name, sigs)
+	err = d.conn.ExportDevice(device)
 
 	log.Printf("Got device : %d", *deviceInfo.IeeeAddress)
 
@@ -290,6 +317,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 				Channel{
 					device:   device,
 					endpoint: endpoint,
+					channel:  nil,
 				},
 			}
 
@@ -341,6 +369,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 				Channel{
 					device:   device,
 					endpoint: endpoint,
+					channel:  nil,
 				},
 			}
 
