@@ -28,7 +28,7 @@ run-test() {
 	    exit 1
 	fi
 
-	payload $method | mosquitto_pub -t "$(channel $device $channel)" -s
+	payload $method | mosquitto_pub -h ${TEST_HOST:-localhost} -t "$(channel $device $channel)" -s
     else
 	echo "usage: run-test.sh channel method [device]" 1>&2
 	exit 1
