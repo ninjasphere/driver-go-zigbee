@@ -60,7 +60,6 @@ type Device struct {
 	info       *model.Device
 	driver     *Driver
 	deviceInfo *nwkmgr.NwkDeviceInfoT
-	conn       *ninja.Connection
 	channels   []Channel
 	sendEvent  func(event string, payload interface{}) error
 }

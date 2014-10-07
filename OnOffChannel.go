@@ -68,7 +68,7 @@ func (c *OnOffChannel) init() error {
 	}
 
 	c.channel = channels.NewOnOffChannel(c)
-	err = c.device.conn.ExportChannel(c.device, c.channel, "on-off")
+	err = c.device.driver.conn.ExportChannel(c.device, c.channel, "on-off")
 	if err != nil {
 		log.Fatalf("Failed to announce on/off channel: %s", err)
 	}
