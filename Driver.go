@@ -33,6 +33,9 @@ type ZStackConfig struct {
 	NwkmgrPort  int
 }
 
+type DriverConfig struct {
+}
+
 type Driver struct {
 	conn      *ninja.Connection
 	sendEvent func(event string, payload interface{}) error
@@ -44,6 +47,7 @@ type Driver struct {
 	nwkmgrConn  *zigbee.ZStackNwkMgr
 	gatewayConn *zigbee.ZStackGateway
 	otaConn     *zigbee.ZStackOta
+	config      *DriverConfig
 }
 
 func NewDriver() *Driver {
@@ -76,6 +80,15 @@ func (d *Driver) SetEventHandler(sendEvent func(event string, payload interface{
 
 func (d *Driver) Reset(hard bool) error {
 	return d.nwkmgrConn.Reset(hard)
+}
+
+func (d *Driver) Start(config *DriverConfig) error {
+	d.config = config
+	return d.sendEvent("config", config)
+}
+
+func (d *Driver) Stop() error {
+	return fmt.Errorf("This driver does not support being stopped. YOU HAVE NO POWER HERE.")
 }
 
 func (d *Driver) PermitJoin(time uint32) error {
