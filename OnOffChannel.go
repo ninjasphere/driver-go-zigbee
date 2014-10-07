@@ -11,7 +11,7 @@ import (
 
 type OnOffChannel struct {
 	Channel
-	channel	*channels.OnOffChannel
+	channel *channels.OnOffChannel
 }
 
 // -------- On/Off Protocol --------

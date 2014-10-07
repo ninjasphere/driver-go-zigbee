@@ -86,7 +86,7 @@ func (c *TempChannel) fetchState() error {
 
 	log.Printf("Got Temp value %d", *response.TemperatureValue)
 
-	c.channel.SendState(float64(*response.TemperatureValue)/100)
+	c.channel.SendState(float64(*response.TemperatureValue) / 100)
 
 	return nil
 }

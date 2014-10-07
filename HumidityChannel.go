@@ -90,7 +90,7 @@ func (c *HumidityChannel) fetchState() error {
 
 	log.Printf("Got Humidity value %d", *response.HumidityValue)
 
-	c.channel.SendState(float64(*response.HumidityValue)/0x2710)
+	c.channel.SendState(float64(*response.HumidityValue) / 0x2710)
 
 	return nil
 }
