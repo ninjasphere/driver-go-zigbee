@@ -272,7 +272,7 @@ func (d *Device) getBasicInfo() error {
 	sigs["zigbee:ModelIdentifier"] = modelIdentifier
 
 	name := fmt.Sprintf("%s by %s", modelIdentifier, manufacturerName)
-	id := fmt.Sprintf("%X", d.deviceInfo.IeeeAddress)
+	id := fmt.Sprintf("%X", *d.deviceInfo.IeeeAddress)
 
 	d.info.Name = &name
 
