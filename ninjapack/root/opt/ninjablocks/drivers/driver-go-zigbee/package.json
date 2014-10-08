@@ -1,4 +1,5 @@
 {
+  "id": "com.ninjablocks.zigbee",
   "name": "driver-zigbee",
   "version": "0.1.0",
   "description": "Ninja Sphere - Zigbee Driver",
