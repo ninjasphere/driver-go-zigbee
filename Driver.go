@@ -90,18 +90,24 @@ func (d *Driver) Stop() error {
 	return fmt.Errorf("This driver does not support being stopped. YOU HAVE NO POWER HERE.")
 }
 
-func (d *Driver) PermitJoin(time uint32) error {
+func (d *Driver) PermitJoin(period uint32) error {
 
-	log.Printf("Pemitting join for %d seconds", time)
+	log.Printf("Join window will open for %d seconds.", period)
 
 	//joinTime := uint32(30)
 	permitJoinRequest := &nwkmgr.NwkSetPermitJoinReq{
-		PermitJoinTime: &time,
+		PermitJoinTime: &period,
 		PermitJoin:     nwkmgr.NwkPermitJoinTypeT_PERMIT_ALL.Enum(),
 	}
 
 	permitJoinResponse := &nwkmgr.NwkZigbeeGenericCnf{}
 
+	go func() {
+		// logging the close of the join window is helpful when debugging
+		// join behaviour.
+		time.Sleep(time.Duration(period) * time.Second)
+		log.Printf("Join window has closed after %d seconds.", period)
+	}()
 	err := d.nwkmgrConn.SendCommand(permitJoinRequest, permitJoinResponse)
 	if err != nil {
 		return fmt.Errorf("Failed to enable joining: %s", err)
