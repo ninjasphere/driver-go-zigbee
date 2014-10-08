@@ -90,6 +90,15 @@ func (d *Driver) Stop() error {
 	return fmt.Errorf("This driver does not support being stopped. YOU HAVE NO POWER HERE.")
 }
 
+func (d *Driver) StartPairing(period uint32) (*uint32, error) {
+	err := d.PermitJoin(uint32(period))
+	if err != nil {
+		err = fmt.Errorf("permit Join failed: %v", err)
+		log.Fatalf("%s", err)
+	}
+	return &period, err
+}
+
 func (d *Driver) PermitJoin(period uint32) error {
 
 	log.Printf("Join window will open for %d seconds.", period)
