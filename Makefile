@@ -15,4 +15,8 @@ test:
 vet:
 	go vet ./...
 
+here:
+	go build *.go
+	mv Driver bin/driver-go-zigbee
+
 .PHONY: all	dist clean test
