@@ -88,7 +88,13 @@ func (d *Driver) Start(config *DriverConfig) error {
 }
 
 func (d *Driver) Stop() error {
-	return fmt.Errorf("This driver does not support being stopped. YOU HAVE NO POWER HERE.")
+	log.Printf("Driver stopping in response to mqtt request")
+	go func() {
+		// allow some time for the RPC reply to be sent.
+		time.Sleep(time.Second)
+		os.Exit(0)
+	}()
+	return nil
 }
 
 func (d *Driver) StartPairing(period uint32) (*uint32, error) {
