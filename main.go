@@ -1,6 +1,7 @@
 package main
 
 import (
+        "flag"
 	"fmt"
 	"log"
 	"os"
@@ -14,12 +15,16 @@ var _ = spew.Dump
 
 var config = &ZStackConfig{
 	Hostname:    "localhost",
-	OtasrvrPort: 2525,
-	GatewayPort: 2541,
-	NwkmgrPort:  2540,
+	OtasrvrPort:    2525,
+	GatewayPort:    2541,
+	NwkmgrPort:     2540,
+	StableFlagFile: "/var/run/zigbee.stable",
 }
 
 func main() {
+
+	flag.StringVar(&config.StableFlagFile, "zigbee-stable-file", "/var/run/zigbee.stable", "Location of zigbee.stable")
+	flag.Parse()
 
 	//spew.Dump(bus)
 
