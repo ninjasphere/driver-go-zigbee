@@ -23,8 +23,9 @@ var config = &ZStackConfig{
 
 func main() {
 
-	flag.StringVar(&config.StableFlagFile, "zigbee-stable-file", "/var/run/zigbee.stable", "Location of zigbee.stable")
-	flag.Parse()
+	flagset := flag.NewFlagSet("drive-go-zigbee", flag.ContinueOnError)
+	flagset.StringVar(&config.StableFlagFile, "zigbee-stable-file", "/var/run/zigbee.stable", "Location of zigbee.stable")
+	flagset.Parse(os.Args)
 
 	//spew.Dump(bus)
 
