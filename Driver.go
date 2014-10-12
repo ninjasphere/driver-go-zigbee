@@ -133,6 +133,8 @@ func (d *Driver) PermitJoin(period uint32) error {
 
 func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 
+	waitUntilZStackReady(config.StableFlagFile)
+
 	d.devices = make(map[uint64]*Device)
 
 	conn, err := ninja.Connect("com.ninjablocks.zigbee")
@@ -146,8 +148,6 @@ func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 	if err != nil {
 		return fmt.Errorf("Could not export driver: %s", err)
 	}
-
-	waitUntilZStackReady(config.StableFlagFile)
 
 	d.nwkmgrConn, err = zigbee.ConnectToNwkMgrServer(cfg.Hostname, cfg.NwkmgrPort)
 	if err != nil {
