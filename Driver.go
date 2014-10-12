@@ -27,10 +27,11 @@ var (
 )
 
 type ZStackConfig struct {
-	Hostname    string
-	OtasrvrPort int
-	GatewayPort int
-	NwkmgrPort  int
+	Hostname       string
+	OtasrvrPort    int
+	GatewayPort    int
+	NwkmgrPort     int
+	StableFlagFile string
 }
 
 type DriverConfig struct {
@@ -145,6 +146,8 @@ func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 	if err != nil {
 		return fmt.Errorf("Could not export driver: %s", err)
 	}
+
+	waitUntilZStackReady(config.StableFlagFile)
 
 	d.nwkmgrConn, err = zigbee.ConnectToNwkMgrServer(cfg.Hostname, cfg.NwkmgrPort)
 	if err != nil {
@@ -428,4 +431,22 @@ func containsUInt32(hackstack []uint32, needle uint32) bool {
 		}
 	}
 	return false
+}
+
+func waitUntilZStackReady(checkFile string) {
+	if checkFile == "" {
+		return
+	}
+
+	// cooperate with zigbeeHAgw so that we don't start the zigbee driver
+	// until we look somewhat stable.
+	log.Printf("waiting until zigbeeHAgw writes %s", checkFile)
+	for {
+		if _, err := os.Stat(checkFile); err == nil {
+			break
+		} else {
+			time.Sleep(time.Second)
+		}
+	}
+	log.Printf("%s detected. start up continues...", checkFile)
 }

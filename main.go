@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -13,13 +14,19 @@ var _ = fmt.Printf
 var _ = spew.Dump
 
 var config = &ZStackConfig{
-	Hostname:    "localhost",
-	OtasrvrPort: 2525,
-	GatewayPort: 2541,
-	NwkmgrPort:  2540,
+	Hostname:       "localhost",
+	OtasrvrPort:    2525,
+	GatewayPort:    2541,
+	NwkmgrPort:     2540,
+	StableFlagFile: "/var/run/zigbee.stable",
 }
 
 func main() {
+
+	flagset := flag.NewFlagSet("drive-go-zigbee", flag.ContinueOnError)
+	flagset.StringVar(&config.StableFlagFile, "zigbee-stable-file", "/var/run/zigbee.stable", "Location of zigbee.stable")
+	flagset.StringVar(&config.Hostname, "zstack-host", "localhost", "IP address or DNS name of zstack host.")
+	flagset.Parse(os.Args)
 
 	//spew.Dump(bus)
 
