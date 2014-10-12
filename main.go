@@ -1,7 +1,7 @@
 package main
 
 import (
-        "flag"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -14,7 +14,7 @@ var _ = fmt.Printf
 var _ = spew.Dump
 
 var config = &ZStackConfig{
-	Hostname:    "localhost",
+	Hostname:       "localhost",
 	OtasrvrPort:    2525,
 	GatewayPort:    2541,
 	NwkmgrPort:     2540,

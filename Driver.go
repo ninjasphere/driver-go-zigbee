@@ -434,8 +434,8 @@ func containsUInt32(hackstack []uint32, needle uint32) bool {
 }
 
 func waitUntilZStackReady(checkFile string) {
-	if (checkFile == "") {
-	   return
+	if checkFile == "" {
+		return
 	}
 
 	// cooperate with zigbeeHAgw so that we don't start the zigbee driver
