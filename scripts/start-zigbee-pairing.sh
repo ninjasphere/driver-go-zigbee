@@ -1,0 +1,1 @@
+../ninjapack/root/opt/ninjablocks/bin/start-zigbee-pairing.sh
