@@ -94,7 +94,7 @@ func (c *OnOffChannel) setState(state *gateway.GwOnOffStateT) error {
 			AddressType: gateway.GwAddressTypeT_UNICAST.Enum(),
 			IeeeAddr:    c.device.deviceInfo.IeeeAddress,
 		},
-		State: gateway.GwOnOffStateT_TOGGLE_STATE.Enum(),
+		State: state,
 	}
 
 	response := &gateway.GwZigbeeGenericRspInd{}
