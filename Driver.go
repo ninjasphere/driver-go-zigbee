@@ -9,6 +9,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/model"
+	"github.com/ninjasphere/go-ninja/events"
 	"github.com/ninjasphere/go-zigbee"
 	"github.com/ninjasphere/go-zigbee/gateway"
 	"github.com/ninjasphere/go-zigbee/nwkmgr"
@@ -39,6 +40,7 @@ type DriverConfig struct {
 
 type Driver struct {
 	conn      *ninja.Connection
+	userAgent *ninja.ServiceClient
 	sendEvent func(event string, payload interface{}) error
 
 	devices map[uint64]*Device
@@ -100,6 +102,12 @@ func (d *Driver) StartPairing(period uint32) (*uint32, error) {
 	return &period, err
 }
 
+func (d *Driver) OnPairingRequest(req *events.PairingRequest, topicKeys map[string]string) bool {
+     log.Printf("Pairing request of %d seconds received from %s", req.Duration, topicKeys["deviceId"])
+     d.PermitJoin(uint32(req.Duration))
+     return true
+}
+
 func (d *Driver) PermitJoin(period uint32) error {
 
 	log.Printf("Join window will open for %d seconds.", period)
@@ -142,7 +150,11 @@ func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 		return fmt.Errorf("Could not connect to MQTT: %s", err)
 	}
 
-	d.conn = conn
+	d.userAgent = conn.GetServiceClient("$device/:deviceId/channel/user-agent")
+	err = d.userAgent.OnUnmarshalledEvent("pairing-requested", d.OnPairingRequest)
+	if err != nil {
+	       return fmt.Errorf("Failed register user-agent service client: %s", err)
+	}
 
 	err = conn.ExportDriver(d)
 	if err != nil {
