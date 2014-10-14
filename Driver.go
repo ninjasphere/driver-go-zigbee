@@ -327,7 +327,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 	err := device.getBasicInfo()
 	if err != nil {
-		log.Fatalf("Failed to get basic info: %s", err)
+		log.Printf("Failed to get basic info: %s", err)
 		return
 	}
 
