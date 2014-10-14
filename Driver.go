@@ -151,7 +151,7 @@ func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 	}
 
 	d.userAgent = conn.GetServiceClient("$device/:deviceId/channel/user-agent")
-	err = d.userAgent.OnUnmarshalledEvent("pairing-requested", d.OnPairingRequest)
+	err = d.userAgent.OnEvent("pairing-requested", d.OnPairingRequest)
 	if err != nil {
 	       return fmt.Errorf("Failed register user-agent service client: %s", err)
 	}
