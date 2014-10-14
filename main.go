@@ -23,10 +23,10 @@ var config = &ZStackConfig{
 
 func main() {
 
-	flagset := flag.NewFlagSet("drive-go-zigbee", flag.ContinueOnError)
+	flagset := flag.NewFlagSet("driver-go-zigbee", flag.ContinueOnError)
 	flagset.StringVar(&config.StableFlagFile, "zigbee-stable-file", "/var/run/zigbee.stable", "Location of zigbee.stable")
 	flagset.StringVar(&config.Hostname, "zstack-host", "localhost", "IP address or DNS name of zstack host.")
-	flagset.Parse(os.Args)
+	flagset.Parse(os.Args[1:])
 
 	//spew.Dump(bus)
 
