@@ -2,14 +2,13 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-ninja/api"
-	"github.com/ninjasphere/go-ninja/model"
 	"github.com/ninjasphere/go-ninja/events"
+	"github.com/ninjasphere/go-ninja/model"
 	"github.com/ninjasphere/go-zigbee"
 	"github.com/ninjasphere/go-zigbee/gateway"
 	"github.com/ninjasphere/go-zigbee/nwkmgr"
@@ -21,10 +20,6 @@ const (
 	ClusterIDTemp     uint32 = 0x402
 	ClusterIDHumidity uint32 = 0x405
 	ClusterIDPower    uint32 = 0x702
-)
-
-var (
-	info = ninja.LoadModuleInfo("./package.json")
 )
 
 type ZStackConfig struct {
@@ -97,20 +92,20 @@ func (d *Driver) StartPairing(period uint32) (*uint32, error) {
 	err := d.PermitJoin(uint32(period))
 	if err != nil {
 		err = fmt.Errorf("permit Join failed: %v", err)
-		log.Fatalf("%s", err)
+		log.Errorf("%s", err)
 	}
 	return &period, err
 }
 
 func (d *Driver) OnPairingRequest(req *events.PairingRequest, topicKeys map[string]string) bool {
-     log.Printf("Pairing request of %d seconds received from %s", req.Duration, topicKeys["deviceId"])
-     d.PermitJoin(uint32(req.Duration))
-     return true
+	log.Debugf("Pairing request of %d seconds received from %s", req.Duration, topicKeys["deviceId"])
+	d.PermitJoin(uint32(req.Duration))
+	return true
 }
 
 func (d *Driver) PermitJoin(period uint32) error {
 
-	log.Printf("Join window will open for %d seconds.", period)
+	log.Debugf("Join window will open for %d seconds.", period)
 
 	//joinTime := uint32(30)
 	permitJoinRequest := &nwkmgr.NwkSetPermitJoinReq{
@@ -124,7 +119,7 @@ func (d *Driver) PermitJoin(period uint32) error {
 		// logging the close of the join window is helpful when debugging
 		// join behaviour.
 		time.Sleep(time.Duration(period) * time.Second)
-		log.Printf("Join window has closed after %d seconds.", period)
+		log.Debugf("Join window has closed after %d seconds.", period)
 	}()
 	err := d.nwkmgrConn.SendCommand(permitJoinRequest, permitJoinResponse)
 	if err != nil {
@@ -153,7 +148,7 @@ func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 	d.userAgent = conn.GetServiceClient("$device/:deviceId/channel/user-agent")
 	err = d.userAgent.OnEvent("pairing-requested", d.OnPairingRequest)
 	if err != nil {
-	       return fmt.Errorf("Failed register user-agent service client: %s", err)
+		return fmt.Errorf("Failed register user-agent service client: %s", err)
 	}
 
 	err = conn.ExportDriver(d)
@@ -232,7 +227,7 @@ func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 
 	spew.Dump(networkKey)
 
-	log.Printf("Started coordinator. Channel:%d Pan ID:0x%X Key:% X", *networkInfo.NwkChannel, *networkInfo.PanId, networkKey.NewKey)
+	log.Infof("Started coordinator. Channel:%d Pan ID:0x%X Key:% X", *networkInfo.NwkChannel, *networkInfo.PanId, networkKey.NewKey)
 
 	return nil
 }
@@ -257,7 +252,7 @@ func (d *Device) SetEventHandler(sendEvent func(event string, payload interface{
 
 func (d *Device) getBasicInfo() error {
 
-	log.Printf("Getting basic information from %X", *d.deviceInfo.IeeeAddress)
+	log.Debugf("Getting basic information from %X", *d.deviceInfo.IeeeAddress)
 
 	cluster := ClusterIDBasic
 	ManufacturerNameAttribute := uint32(0x004)
@@ -294,7 +289,7 @@ func (d *Device) getBasicInfo() error {
 		case ModelIdentifierAttribute:
 			modelIdentifier = string(attribute.AttributeValue)
 		default:
-			log.Printf("Unknown attribute returned when finding basic info %s", *attribute.AttributeId)
+			log.Debugf("Unknown attribute returned when finding basic info %s", *attribute.AttributeId)
 		}
 	}
 
@@ -316,11 +311,11 @@ func (d *Device) getBasicInfo() error {
 
 func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
-	fmt.Printf("\n\n")
-	fmt.Printf("---- Found Device IEEE:%X ----\f", *deviceInfo.IeeeAddress)
+	log.Debugf("\n\n")
+	log.Debugf("---- Found Device IEEE:%X ----\f", *deviceInfo.IeeeAddress)
 
 	if d.devices[*deviceInfo.IeeeAddress] != nil {
-		fmt.Printf("We've already seen this device")
+		log.Debugf("We've already seen this device")
 	}
 
 	/*sigs, _ := simplejson.NewJson([]byte(`{
@@ -339,7 +334,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 	err := device.getBasicInfo()
 	if err != nil {
-		log.Printf("Failed to get basic info: %s", err)
+		log.Debugf("Failed to get basic info: %s", err)
 		return
 	}
 
@@ -347,13 +342,13 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 	err = d.conn.ExportDevice(device)
 
-	log.Printf("Got device : %d", *deviceInfo.IeeeAddress)
+	log.Debugf("Got device : %d", *deviceInfo.IeeeAddress)
 
 	for _, endpoint := range deviceInfo.SimpleDescList {
-		log.Printf("Got endpoint : %d", *endpoint.EndpointId)
+		log.Debugf("Got endpoint : %d", *endpoint.EndpointId)
 
 		if containsUInt32(endpoint.InputClusters, ClusterIDOnOff) {
-			log.Printf("This endpoint has on/off cluster")
+			log.Debugf("This endpoint has on/off cluster")
 
 			onOff := &OnOffChannel{
 				Channel{
@@ -365,13 +360,13 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 			err := onOff.init()
 			if err != nil {
-				log.Printf("Failed initialising on/off channel: %s", err)
+				log.Errorf("Failed initialising on/off channel: %s", err)
 			}
 
 		}
 
 		if containsUInt32(endpoint.InputClusters, ClusterIDPower) {
-			log.Printf("This endpoint has power cluster")
+			log.Debugf("This endpoint has power cluster")
 
 			power := &PowerChannel{
 				Channel{
@@ -383,13 +378,13 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 			err := power.init()
 			if err != nil {
-				log.Printf("Failed initialising power channel: %s", err)
+				log.Errorf("Failed initialising power channel: %s", err)
 			}
 
 		}
 
 		if containsUInt32(endpoint.InputClusters, ClusterIDTemp) {
-			log.Printf("This endpoint has temperature cluster")
+			log.Debugf("This endpoint has temperature cluster")
 
 			temp := &TempChannel{
 				Channel{
@@ -401,13 +396,13 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 			err := temp.init()
 			if err != nil {
-				log.Printf("Failed initialising temp channel: %s", err)
+				log.Errorf("Failed initialising temp channel: %s", err)
 			}
 
 		}
 
 		if containsUInt32(endpoint.InputClusters, ClusterIDHumidity) {
-			log.Printf("This endpoint has humidity cluster")
+			log.Debugf("This endpoint has humidity cluster")
 
 			humidity := &HumidityChannel{
 				Channel{
@@ -419,7 +414,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 			err := humidity.init()
 			if err != nil {
-				log.Printf("Failed initialising humidity channel: %s", err)
+				log.Errorf("Failed initialising humidity channel: %s", err)
 			}
 
 		}
@@ -428,7 +423,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 	d.devices[*deviceInfo.IeeeAddress] = device
 
-	fmt.Printf("---- Finished Device IEEE:%X ----\n", *deviceInfo.IeeeAddress)
+	log.Debugf("---- Finished Device IEEE:%X ----\n", *deviceInfo.IeeeAddress)
 
 }
 
@@ -453,7 +448,7 @@ func waitUntilZStackReady(checkFile string) {
 
 	// cooperate with zigbeeHAgw so that we don't start the zigbee driver
 	// until we look somewhat stable.
-	log.Printf("waiting until zigbeeHAgw writes %s", checkFile)
+	log.Debugf("waiting until zigbeeHAgw writes %s", checkFile)
 	for {
 		if _, err := os.Stat(checkFile); err == nil {
 			break
@@ -461,5 +456,5 @@ func waitUntilZStackReady(checkFile string) {
 			time.Sleep(time.Second)
 		}
 	}
-	log.Printf("%s detected. start up continues...", checkFile)
+	log.Debugf("%s detected. start up continues...", checkFile)
 }
