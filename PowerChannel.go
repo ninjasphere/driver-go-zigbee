@@ -47,7 +47,7 @@ func (c *PowerChannel) init() error {
 	}
 
 	c.channel = channels.NewPowerChannel(c)
-	err = c.device.driver.conn.ExportChannel(c.device, c.channel, "power")
+	err = c.device.driver.Conn.ExportChannel(c.device, c.channel, "power")
 	if err != nil {
 		log.Fatalf("Failed to announce power channel: %s", err)
 	}
