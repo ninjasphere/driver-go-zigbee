@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/ninjasphere/go-ninja/channels"
@@ -15,7 +14,7 @@ type PowerChannel struct {
 }
 
 func (c *PowerChannel) init() error {
-	log.Printf("Initialising power channel of device %d", *c.device.deviceInfo.IeeeAddress)
+	log.Debugf("Initialising power channel of device %d", *c.device.deviceInfo.IeeeAddress)
 
 	clusterID := ClusterIDPower
 	instantaneousDemandAttributeID := uint32(0x0400)
@@ -42,9 +41,9 @@ func (c *PowerChannel) init() error {
 	response := &gateway.GwSetAttributeReportingRspInd{}
 	err := c.device.driver.gatewayConn.SendAsyncCommand(request, response, 20*time.Second)
 	if err != nil {
-		log.Printf("Error enabling power reporting: %s", err)
+		log.Errorf("Error enabling power reporting: %s", err)
 	} else if response.Status.String() != "STATUS_SUCCESS" {
-		log.Printf("Failed to enable power reporting. status: %s", response.Status.String())
+		log.Errorf("Failed to enable power reporting. status: %s", response.Status.String())
 	}
 
 	c.channel = channels.NewPowerChannel(c)
@@ -55,10 +54,10 @@ func (c *PowerChannel) init() error {
 
 	go func() {
 		for {
-			log.Printf("Polling for power")
+			log.Debugf("Polling for power")
 			err := c.fetchState()
 			if err != nil {
-				log.Printf("Failed to poll for power level %s", err)
+				log.Errorf("Failed to poll for power level %s", err)
 			}
 			time.Sleep(10 * time.Second)
 		}
@@ -85,7 +84,7 @@ func (c *PowerChannel) fetchState() error {
 		return fmt.Errorf("Failed to get power level. status: %s", response.Status.String())
 	}
 
-	log.Printf("Got power value %d", *response.PowerValue)
+	log.Debugf("Got power value %d", *response.PowerValue)
 
 	c.channel.SendState((float64)(*response.PowerValue))
 

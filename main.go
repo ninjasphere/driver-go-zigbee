@@ -3,26 +3,28 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/ninjasphere/go-ninja/api"
+	"github.com/ninjasphere/go-ninja/logger"
 )
 
-var _ = fmt.Printf
-var _ = spew.Dump
-
-var config = &ZStackConfig{
-	Hostname:       "localhost",
-	OtasrvrPort:    2525,
-	GatewayPort:    2541,
-	NwkmgrPort:     2540,
-	StableFlagFile: "/var/run/zigbee.stable",
-}
+var (
+	info   = ninja.LoadModuleInfo("./package.json")
+	log    = logger.GetLogger(info.ID)
+	config = &ZStackConfig{
+		Hostname:       "localhost",
+		OtasrvrPort:    2525,
+		GatewayPort:    2541,
+		NwkmgrPort:     2540,
+		StableFlagFile: "/var/run/zigbee.stable",
+	}
+)
 
 func main() {
 
+	// FIXME: use ninja configuration framework
 	flagset := flag.NewFlagSet("driver-go-zigbee", flag.ContinueOnError)
 	flagset.StringVar(&config.StableFlagFile, "zigbee-stable-file", "/var/run/zigbee.stable", "Location of zigbee.stable")
 	flagset.StringVar(&config.Hostname, "zstack-host", "localhost", "IP address or DNS name of zstack host.")
@@ -54,7 +56,7 @@ func main() {
 
 	//select {
 	//case <-networkReady:
-	log.Println("Driver starting!")
+	log.Infof("Driver starting!")
 	driver.FetchDevices()
 	err = driver.PermitJoin(120)
 	if err != nil {

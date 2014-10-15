@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/ninjasphere/go-ninja/channels"
@@ -15,7 +14,7 @@ type TempChannel struct {
 }
 
 func (c *TempChannel) init() error {
-	log.Printf("Initialising Temp channel of device %d", *c.device.deviceInfo.IeeeAddress)
+	log.Debugf("Initialising Temp channel of device %d", *c.device.deviceInfo.IeeeAddress)
 
 	clusterID := ClusterIDTemp
 	instantaneousDemandAttributeID := uint32(0x0400)
@@ -42,9 +41,9 @@ func (c *TempChannel) init() error {
 	response := &gateway.GwSetAttributeReportingRspInd{}
 	err := c.device.driver.gatewayConn.SendAsyncCommand(request, response, 20*time.Second)
 	if err != nil {
-		log.Printf("Error enabling Temp reporting: %s", err)
+		log.Errorf("Error enabling Temp reporting: %s", err)
 	} else if response.Status.String() != "STATUS_SUCCESS" {
-		log.Printf("Failed to enable Temp reporting. status: %s", response.Status.String())
+		log.Errorf("Failed to enable Temp reporting. status: %s", response.Status.String())
 	}
 
 	c.channel = channels.NewTemperatureChannel(c)
@@ -57,7 +56,7 @@ func (c *TempChannel) init() error {
 		for {
 			err := c.fetchState()
 			if err != nil {
-				log.Printf("Failed to poll for Temperature %s", err)
+				log.Errorf("Failed to poll for Temperature %s", err)
 			}
 			time.Sleep(10 * time.Second)
 		}
@@ -84,7 +83,7 @@ func (c *TempChannel) fetchState() error {
 		return fmt.Errorf("Failed to get Temp level. status: %s", response.Status.String())
 	}
 
-	log.Printf("Got Temp value %d", *response.TemperatureValue)
+	log.Debugf("Got Temp value %d", *response.TemperatureValue)
 
 	c.channel.SendState(float64(*response.TemperatureValue) / 100)
 

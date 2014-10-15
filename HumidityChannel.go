@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/ninjasphere/go-ninja/channels"
@@ -15,7 +14,7 @@ type HumidityChannel struct {
 }
 
 func (c *HumidityChannel) init() error {
-	log.Printf("Initialising Humidity channel of device %d", *c.device.deviceInfo.IeeeAddress)
+	log.Debugf("Initialising Humidity channel of device %d", *c.device.deviceInfo.IeeeAddress)
 
 	clusterID := ClusterIDHumidity
 	instantaneousDemandAttributeID := uint32(0x0400)
@@ -42,17 +41,13 @@ func (c *HumidityChannel) init() error {
 	response := &gateway.GwSetAttributeReportingRspInd{}
 	err := c.device.driver.gatewayConn.SendAsyncCommand(request, response, 20*time.Second)
 	if err != nil {
-		log.Printf("Error enabling Humidity reporting: %s", err)
+		log.Errorf("Error enabling Humidity reporting: %s", err)
 	} else if response.Status.String() != "STATUS_SUCCESS" {
-		log.Printf("Failed to enable Humidity reporting. status: %s", response.Status.String())
+		log.Errorf("Failed to enable Humidity reporting. status: %s", response.Status.String())
 	}
 
 	c.channel = channels.NewHumidityChannel(c)
 	err = c.device.driver.conn.ExportChannel(c.device, c.channel, "humidity")
-	if err != nil {
-		log.Printf("failed to export humidity channel")
-	}
-
 	if err != nil {
 		log.Fatalf("Failed to announce Humidity channel: %s", err)
 	}
@@ -61,7 +56,7 @@ func (c *HumidityChannel) init() error {
 		for {
 			err := c.fetchState()
 			if err != nil {
-				log.Printf("Failed to poll for Humidity %s", err)
+				log.Errorf("Failed to poll for Humidity %s", err)
 			}
 			time.Sleep(10 * time.Second)
 		}
@@ -88,7 +83,7 @@ func (c *HumidityChannel) fetchState() error {
 		return fmt.Errorf("Failed to get Humidity level. status: %s", response.Status.String())
 	}
 
-	log.Printf("Got Humidity value %d", *response.HumidityValue)
+	log.Debugf("Got Humidity value %d", *response.HumidityValue)
 
 	c.channel.SendState(float64(*response.HumidityValue) / 0x2710)
 

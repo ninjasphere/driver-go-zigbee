@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/ninjasphere/go-ninja/channels"
@@ -37,7 +36,7 @@ func (c *OnOffChannel) SetOnOff(state bool) error {
 }
 
 func (c *OnOffChannel) init() error {
-	log.Printf("Initialising on/off channel of device %d", *c.device.deviceInfo.IeeeAddress)
+	log.Debugf("Initialising on/off channel of device %d", *c.device.deviceInfo.IeeeAddress)
 
 	clusterID := uint32(0x06)
 	attributeID := uint32(0)
@@ -62,9 +61,9 @@ func (c *OnOffChannel) init() error {
 
 	err := c.device.driver.gatewayConn.SendAsyncCommand(request, response, 20*time.Second)
 	if err != nil {
-		log.Printf("Error enabling on/off reporting: %s", err)
+		log.Errorf("Error enabling on/off reporting: %s", err)
 	} else if response.Status.String() != "STATUS_SUCCESS" {
-		log.Printf("Failed to enable on/off reporting. status: %s", response.Status.String())
+		log.Errorf("Failed to enable on/off reporting. status: %s", response.Status.String())
 	}
 
 	c.channel = channels.NewOnOffChannel(c)
@@ -75,10 +74,10 @@ func (c *OnOffChannel) init() error {
 
 	go func() {
 		for {
-			log.Printf("Polling for on/off")
+			log.Debugf("Polling for on/off")
 			err := c.fetchState()
 			if err != nil {
-				log.Printf("Failed to poll for on/off state %s", err)
+				log.Errorf("Failed to poll for on/off state %s", err)
 			}
 			time.Sleep(10 * time.Second)
 		}
