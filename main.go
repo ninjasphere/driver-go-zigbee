@@ -8,6 +8,7 @@ import (
 
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/logger"
+	"github.com/ninjasphere/go-zigbee"
 )
 
 var (
@@ -23,6 +24,9 @@ var (
 )
 
 func main() {
+	// do all zigbee logger with the driver's logger
+
+	zigbee.SetLogger(log)
 
 	// FIXME: use ninja configuration framework
 	flagset := flag.NewFlagSet("driver-go-zigbee", flag.ContinueOnError)
