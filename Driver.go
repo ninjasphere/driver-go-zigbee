@@ -35,7 +35,6 @@ type DriverConfig struct {
 
 type Driver struct {
 	conn      *ninja.Connection
-	userAgent *ninja.ServiceClient
 	sendEvent func(event string, payload interface{}) error
 
 	devices map[uint64]*Device
@@ -145,8 +144,8 @@ func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 		return fmt.Errorf("Could not connect to MQTT: %s", err)
 	}
 
-	d.userAgent = conn.GetServiceClient("$device/:deviceId/channel/user-agent")
-	err = d.userAgent.OnEvent("pairing-requested", d.OnPairingRequest)
+	userAgent := conn.GetServiceClient("$device/:deviceId/channel/user-agent")
+	err = userAgent.OnEvent("pairing-requested", d.OnPairingRequest)
 	if err != nil {
 		return fmt.Errorf("Failed register user-agent service client: %s", err)
 	}
