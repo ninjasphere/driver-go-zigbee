@@ -26,7 +26,7 @@ var (
 func main() {
 	// do all zigbee logger with the driver's logger
 
-	zigbee.SetLogger(logger.GetLogger(info.ID + ".backend"))
+	zigbee.SetLogger(log)
 
 	// FIXME: use ninja configuration framework
 	flagset := flag.NewFlagSet("driver-go-zigbee", flag.ContinueOnError)
