@@ -132,18 +132,18 @@ func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 
 	d.devices = make(map[uint64]*Device)
 
-	conn, err := ninja.Connect("com.ninjablocks.zigbee")
+	err := d.Init(info)
 	if err != nil {
 		return fmt.Errorf("Could not connect to MQTT: %s", err)
 	}
 
-	userAgent := conn.GetServiceClient("$device/:deviceId/channel/user-agent")
+	userAgent := d.Conn.GetServiceClient("$device/:deviceId/channel/user-agent")
 	err = userAgent.OnEvent("pairing-requested", d.OnPairingRequest)
 	if err != nil {
 		return fmt.Errorf("Failed register user-agent service client: %s", err)
 	}
 
-	err = conn.ExportDriver(d)
+	err = d.Export(d)
 	if err != nil {
 		return fmt.Errorf("Could not export driver: %s", err)
 	}
