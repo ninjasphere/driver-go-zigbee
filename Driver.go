@@ -9,8 +9,6 @@ import (
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/events"
 	"github.com/ninjasphere/go-ninja/model"
-	"github.com/ninjasphere/go-ninja/support"
-
 	"github.com/ninjasphere/go-zigbee"
 	"github.com/ninjasphere/go-zigbee/gateway"
 	"github.com/ninjasphere/go-zigbee/nwkmgr"
@@ -36,7 +34,9 @@ type DriverConfig struct {
 }
 
 type Driver struct {
-	support.DriverSupport
+	conn      *ninja.Connection
+	userAgent *ninja.ServiceClient
+	sendEvent func(event string, payload interface{}) error
 
 	devices map[uint64]*Device
 
@@ -67,13 +67,21 @@ type Channel struct {
 	endpoint *nwkmgr.NwkSimpleDescriptorT
 }
 
+func (d *Driver) GetModuleInfo() *model.Module {
+	return info
+}
+
+func (d *Driver) SetEventHandler(sendEvent func(event string, payload interface{}) error) {
+	d.sendEvent = sendEvent
+}
+
 func (d *Driver) Reset(hard bool) error {
 	return d.nwkmgrConn.Reset(hard)
 }
 
 func (d *Driver) Start(config *DriverConfig) error {
 	d.config = config
-	return d.SendEvent("config", config)
+	return d.sendEvent("config", config)
 }
 
 func (d *Driver) Stop() error {
@@ -137,8 +145,8 @@ func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 		return fmt.Errorf("Could not connect to MQTT: %s", err)
 	}
 
-	userAgent := conn.GetServiceClient("$device/:deviceId/channel/user-agent")
-	err = userAgent.OnEvent("pairing-requested", d.OnPairingRequest)
+	d.userAgent = conn.GetServiceClient("$device/:deviceId/channel/user-agent")
+	err = d.userAgent.OnEvent("pairing-requested", d.OnPairingRequest)
 	if err != nil {
 		return fmt.Errorf("Failed register user-agent service client: %s", err)
 	}
@@ -330,11 +338,9 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 		return
 	}
 
-	if d.Log.IsDebugEnabled() {
-		spew.Dump(deviceInfo)
-	}
+	spew.Dump(deviceInfo)
 
-	err = d.Conn.ExportDevice(device)
+	err = d.conn.ExportDevice(device)
 
 	log.Debugf("Got device : %d", *deviceInfo.IeeeAddress)
 

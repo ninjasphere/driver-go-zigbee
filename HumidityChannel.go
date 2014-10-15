@@ -47,7 +47,7 @@ func (c *HumidityChannel) init() error {
 	}
 
 	c.channel = channels.NewHumidityChannel(c)
-	err = c.device.driver.Conn.ExportChannel(c.device, c.channel, "humidity")
+	err = c.device.driver.conn.ExportChannel(c.device, c.channel, "humidity")
 	if err != nil {
 		log.Fatalf("Failed to announce Humidity channel: %s", err)
 	}
