@@ -338,7 +338,9 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 		return
 	}
 
-	spew.Dump(deviceInfo)
+	if d.Log.IsDebugEnabled() {
+		spew.Dump(deviceInfo)
+	}
 
 	err = d.conn.ExportDevice(device)
 
