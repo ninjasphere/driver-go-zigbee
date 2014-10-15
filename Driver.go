@@ -105,7 +105,7 @@ func (d *Driver) OnPairingRequest(req *events.PairingRequest, topicKeys map[stri
 
 func (d *Driver) PermitJoin(period uint32) error {
 
-	log.Debugf("Join window will open for %d seconds.", period)
+	log.Infof("Join window will open for %d seconds.", period)
 
 	//joinTime := uint32(30)
 	permitJoinRequest := &nwkmgr.NwkSetPermitJoinReq{
@@ -119,7 +119,7 @@ func (d *Driver) PermitJoin(period uint32) error {
 		// logging the close of the join window is helpful when debugging
 		// join behaviour.
 		time.Sleep(time.Duration(period) * time.Second)
-		log.Debugf("Join window has closed after %d seconds.", period)
+		log.Infof("Join window has closed after %d seconds.", period)
 	}()
 	err := d.nwkmgrConn.SendCommand(permitJoinRequest, permitJoinResponse)
 	if err != nil {
