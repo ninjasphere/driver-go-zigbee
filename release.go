@@ -12,7 +12,7 @@ func init() {
 	logger.GetLogger("").SetLogLevel(loggo.INFO)
 
 	bugsnag.Configure(bugsnag.Configuration{
-		APIKey:       "205838b03710e9d7bf45b3722d7b9ac6",
+		APIKey:       "6145ec8c75d22e6236758aca31247a63",
 		ReleaseStage: "production",
 	})
 }
