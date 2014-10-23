@@ -426,6 +426,28 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 		}
 
+		if containsUInt32(endpoint.InputClusters, ClusterIDColor) {
+			log.Debugf("This endpoint has color cluster.")
+
+			if log.IsDebugEnabled() {
+				spew.Dump("color cluster", endpoint, ClusterIDColor)
+			}
+
+			color := &ColorChannel{
+				Channel: Channel{
+					ID:       fmt.Sprintf("%d-%d", *endpoint.EndpointId, ClusterIDColor),
+					device:   device,
+					endpoint: endpoint,
+				},
+			}
+
+			err := color.init()
+			if err != nil {
+				log.Debugf("Failed initialising color channel: %s", err)
+			}
+
+		}
+
 	}
 
 	fmt.Printf("---- Finished Device IEEE:%X ----\n", *deviceInfo.IeeeAddress)
