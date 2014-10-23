@@ -170,10 +170,11 @@ func (d *Driver) Start() error {
 		spew.Dump(networkKey)
 	}*/
 
-	log.Debugf("Started coordinator. Channel:%d Pan ID:0x%X Key:% X", *networkInfo.NwkChannel, *networkInfo.PanId)
+	log.Debugf("Started coordinator. Channel:%d Pan ID:0x%X", *networkInfo.NwkChannel, *networkInfo.PanId)
 
-	return d.FetchDevices()
+	d.StartFetchingDevices()
 
+	return nil
 }
 
 func (d *Driver) StartPairing(period uint32) (*uint32, error) {
@@ -220,25 +221,35 @@ func (d *Driver) EnableJoin(duration uint32) error {
 	}()
 
 	d.Log.Infof("Join window opens for %d seconds", duration)
-
 	return nil
 }
 
-func (d *Driver) FetchDevices() error {
-	return d.nwkmgrConn.FetchDeviceList()
+func (d *Driver) StartFetchingDevices() {
+	go func() {
+		for {
+			d.nwkmgrConn.FetchDeviceList()
+			time.Sleep(time.Second * 30)
+		}
+	}()
 }
 
 func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
-	log.Debugf("\n\n")
-	log.Debugf("---- Found Device IEEE:%X ----\f", *deviceInfo.IeeeAddress)
-	log.Debugf("Device Info: %v", *deviceInfo)
+	// XXX: This device status is often wrong. Useless.
+	/*if *deviceInfo.DeviceStatus != nwkmgr.NwkDeviceStatusT_DEVICE_ON_LINE {
+		log.Debugf("---- Found Offline Device IEEE:%X ----\f", *deviceInfo.IeeeAddress)
+
+		// TODO: Inform the device (if we've seen it online) to stop polling
+
+		return
+	}*/
 
 	if d.devices[*deviceInfo.IeeeAddress] != nil {
-		// We've seen this already, but it may have been repaired. We *should* just be able to replace
+		// We've seen this already, but it may have been re-paired. We *should* just be able to replace
 		// the deviceInfo object, which is used for all communication.
 		// TODO: Actually verify this. May need to re-run channel init.
 		d.devices[*deviceInfo.IeeeAddress].deviceInfo = deviceInfo
+		return
 	}
 
 	device := &Device{
@@ -270,23 +281,32 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 	err := device.getBasicInfo()
 	if err != nil {
-		log.Debugf("Failed to get basic info: %s", err)
+		log.Debugf("Failed to get basic info for: %X : %s", *deviceInfo.IeeeAddress, err)
+		return
+	}
+
+	name := ""
+
+	if device.ModelIdentifier != "" {
+		(*device.info.Signatures)["zigbee:ModelIdentifier"] = device.ModelIdentifier
+		name = device.ModelIdentifier
 	}
 
 	if device.ManufacturerName != "" {
 		(*device.info.Signatures)["zigbee:ManufacturerName"] = device.ManufacturerName
-	} else {
-		device.ManufacturerName = "Unknown"
-	}
-	if device.ModelIdentifier != "" {
-		(*device.info.Signatures)["zigbee:ModelIdentifier"] = device.ModelIdentifier
-	} else {
-		device.ModelIdentifier = fmt.Sprintf("MAC:%X", *deviceInfo.IeeeAddress)
+		if device.ModelIdentifier != "" {
+			name += " by "
+		}
+		name += device.ManufacturerName
 	}
 
-	name := fmt.Sprintf("%s by %s", device.ModelIdentifier, device.ManufacturerName)
+	log.Debugf("\n\n")
+	log.Infof("---- Found Device IEEE:%X Name:%s ----\f", *deviceInfo.IeeeAddress, name)
+	log.Debugf("Device Info: %v", *deviceInfo)
 
-	device.info.Name = &name
+	if name != "" {
+		device.info.Name = &name
+	}
 
 	if log.IsDebugEnabled() {
 		spew.Dump(deviceInfo)
@@ -297,6 +317,8 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 		log.Fatalf("Failed to export zigbee device %s: %s", name, err)
 	}
 	d.devicesFound++
+
+	d.devices[*deviceInfo.IeeeAddress] = device
 
 	log.Debugf("Got device : %d", *deviceInfo.IeeeAddress)
 
@@ -398,8 +420,6 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 		}
 
 	}
-
-	d.devices[*deviceInfo.IeeeAddress] = device
 
 	fmt.Printf("---- Finished Device IEEE:%X ----\n", *deviceInfo.IeeeAddress)
 
