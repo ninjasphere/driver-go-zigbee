@@ -24,7 +24,7 @@ type Device struct {
 
 func (d *Device) getBasicInfo() error {
 
-	log.Infof("Getting basic information from %X", *d.deviceInfo.IeeeAddress)
+	log.Debugf("Getting basic information from %X", *d.deviceInfo.IeeeAddress)
 
 	cluster := ClusterIDBasic
 	ManufacturerNameAttribute := uint32(0x004)
@@ -56,7 +56,7 @@ func (d *Device) getBasicInfo() error {
 		case ModelIdentifierAttribute:
 			d.ModelIdentifier = string(attribute.AttributeValue)
 		default:
-			log.Infof("Unknown attribute returned when finding basic info %s", *attribute.AttributeId)
+			log.Debugf("Unknown attribute returned when finding basic info %s", *attribute.AttributeId)
 		}
 	}
 

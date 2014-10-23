@@ -131,7 +131,9 @@ func (d *Driver) Start() error {
 
 	err = d.nwkmgrConn.SendCommand(&nwkmgr.NwkZigbeeNwkInfoReq{}, networkInfo)
 	if err != nil {
-		spew.Dump(networkInfo)
+		if log.IsDebugEnabled() {
+			spew.Dump(networkInfo)
+		}
 		return fmt.Errorf("Failed getting network info: %s", err)
 	}
 
@@ -146,7 +148,9 @@ func (d *Driver) Start() error {
 		return fmt.Errorf("Failed getting local device info: %s", err)
 	}
 
-	spew.Dump("device info", localDevice.String())
+	if log.IsDebugEnabled() {
+		spew.Dump("device info", localDevice.String())
+	}
 
 	networkKey := &nwkmgr.NwkGetNwkKeyCnf{}
 
@@ -155,7 +159,9 @@ func (d *Driver) Start() error {
 		log.Fatalf("Failed getting network key: %s", err)
 	}
 
-	spew.Dump(networkKey)
+	if log.IsDebugEnabled() {
+		spew.Dump(networkKey)
+	}
 
 	log.Debugf("Started coordinator. Channel:%d Pan ID:0x%X Key:% X", *networkInfo.NwkChannel, *networkInfo.PanId, networkKey.NewKey)
 
@@ -199,7 +205,7 @@ func (d *Driver) FetchDevices() error {
 func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 	log.Debugf("\n\n")
-	log.Infof("---- Found Device IEEE:%X ----\f", *deviceInfo.IeeeAddress)
+	log.Debugf("---- Found Device IEEE:%X ----\f", *deviceInfo.IeeeAddress)
 	log.Debugf("Device Info: %v", *deviceInfo)
 
 	if d.devices[*deviceInfo.IeeeAddress] != nil {
@@ -256,7 +262,9 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 	device.info.Name = &name
 
-	spew.Dump(deviceInfo)
+	if log.IsDebugEnabled() {
+		spew.Dump(deviceInfo)
+	}
 
 	err = d.Conn.ExportDevice(device)
 	if err != nil {
@@ -343,7 +351,9 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 		if containsUInt32(endpoint.InputClusters, ClusterIDLevel) {
 			log.Debugf("This endpoint has level cluster. Exporting as brightness channel")
 
-			spew.Dump("brightness cluster", endpoint, ClusterIDLevel)
+			if log.IsDebugEnabled() {
+				spew.Dump("brightness cluster", endpoint, ClusterIDLevel)
+			}
 
 			brightness := &BrightnessChannel{
 				Channel: Channel{
