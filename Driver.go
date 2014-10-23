@@ -159,7 +159,7 @@ func (d *Driver) Start() error {
 		spew.Dump("device info", localDevice.String())
 	}
 
-	networkKey := &nwkmgr.NwkGetNwkKeyCnf{}
+	/*networkKey := &nwkmgr.NwkGetNwkKeyCnf{}
 
 	err = d.nwkmgrConn.SendCommand(&nwkmgr.NwkGetNwkKeyReq{}, networkKey)
 	if err != nil {
@@ -168,9 +168,9 @@ func (d *Driver) Start() error {
 
 	if log.IsDebugEnabled() {
 		spew.Dump(networkKey)
-	}
+	}*/
 
-	log.Debugf("Started coordinator. Channel:%d Pan ID:0x%X Key:% X", *networkInfo.NwkChannel, *networkInfo.PanId, networkKey.NewKey)
+	log.Debugf("Started coordinator. Channel:%d Pan ID:0x%X Key:% X", *networkInfo.NwkChannel, *networkInfo.PanId)
 
 	return d.FetchDevices()
 
