@@ -6,19 +6,17 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/events"
 	"github.com/ninjasphere/go-ninja/model"
 	"github.com/ninjasphere/go-ninja/support"
-
 	"github.com/ninjasphere/go-zigbee"
-	"github.com/ninjasphere/go-zigbee/gateway"
 	"github.com/ninjasphere/go-zigbee/nwkmgr"
 )
 
 const (
 	ClusterIDBasic    uint32 = 0x00
 	ClusterIDOnOff    uint32 = 0x06
+	ClusterIDColor    uint32 = 0x300
 	ClusterIDTemp     uint32 = 0x402
 	ClusterIDHumidity uint32 = 0x405
 	ClusterIDPower    uint32 = 0x702
@@ -32,123 +30,60 @@ type ZStackConfig struct {
 	StableFlagFile string
 }
 
-type DriverConfig struct {
-}
-
 type Driver struct {
 	support.DriverSupport
 
 	devices map[uint64]*Device
 
-	NetworkReady chan bool
+	config *ZStackConfig
 
 	nwkmgrConn  *zigbee.ZStackNwkMgr
 	gatewayConn *zigbee.ZStackGateway
 	otaConn     *zigbee.ZStackOta
-	config      *DriverConfig
 }
 
-func NewDriver() *Driver {
-	return &Driver{
-		NetworkReady: make(chan bool),
+func NewDriver(config *ZStackConfig) (*Driver, error) {
+	driver := &Driver{
+		config:  config,
+		devices: make(map[uint64]*Device),
 	}
-}
 
-type Device struct {
-	info       *model.Device
-	driver     *Driver
-	deviceInfo *nwkmgr.NwkDeviceInfoT
-	channels   []Channel
-	sendEvent  func(event string, payload interface{}) error
-}
+	err := driver.Init(info)
+	if err != nil {
+		log.Fatalf("Failed to initialize fake driver: %s", err)
+	}
 
-type Channel struct {
-	device   *Device
-	endpoint *nwkmgr.NwkSimpleDescriptorT
+	err = driver.Export(driver)
+	if err != nil {
+		log.Fatalf("Failed to export fake driver: %s", err)
+	}
+
+	userAgent := driver.Conn.GetServiceClient("$device/:deviceId/channel/user-agent")
+	userAgent.OnEvent("pairing-requested", func(pairingRequest *events.PairingRequest, values map[string]string) bool {
+		log.Infof("Pairing request received from %s for %d seconds", values["deviceId"], pairingRequest.Duration)
+
+		duration := uint32(pairingRequest.Duration)
+
+		if err := driver.EnableJoin(duration); err != nil {
+			log.Warningf("Failed to enable joining: %s", err)
+		}
+
+		return true
+	})
+
+	return driver, nil
+
 }
 
 func (d *Driver) Reset(hard bool) error {
 	return d.nwkmgrConn.Reset(hard)
 }
 
-func (d *Driver) Start(config *DriverConfig) error {
-	d.config = config
-	return d.SendEvent("config", config)
-}
+func (d *Driver) Start() error {
 
-func (d *Driver) Stop() error {
-	return fmt.Errorf("This driver does not support being stopped. YOU HAVE NO POWER HERE.")
-}
+	var err error
 
-func (d *Driver) StartPairing(period uint32) (*uint32, error) {
-	err := d.PermitJoin(uint32(period))
-	if err != nil {
-		err = fmt.Errorf("permit Join failed: %v", err)
-		log.Errorf("%s", err)
-	}
-	return &period, err
-}
-
-func (d *Driver) OnPairingRequest(req *events.PairingRequest, topicKeys map[string]string) bool {
-	log.Debugf("Pairing request of %d seconds received from %s", req.Duration, topicKeys["deviceId"])
-	d.PermitJoin(uint32(req.Duration))
-	return true
-}
-
-func (d *Driver) PermitJoin(period uint32) error {
-
-	log.Infof("Join window will open for %d seconds.", period)
-
-	//joinTime := uint32(30)
-	permitJoinRequest := &nwkmgr.NwkSetPermitJoinReq{
-		PermitJoinTime: &period,
-		PermitJoin:     nwkmgr.NwkPermitJoinTypeT_PERMIT_ALL.Enum(),
-	}
-
-	permitJoinResponse := &nwkmgr.NwkZigbeeGenericCnf{}
-
-	go func() {
-		// logging the close of the join window is helpful when debugging
-		// join behaviour.
-		time.Sleep(time.Duration(period) * time.Second)
-		log.Infof("Join window has closed after %d seconds.", period)
-	}()
-	err := d.nwkmgrConn.SendCommand(permitJoinRequest, permitJoinResponse)
-	if err != nil {
-		return fmt.Errorf("Failed to enable joining: %s", err)
-	}
-	if permitJoinResponse.Status.String() != "STATUS_SUCCESS" {
-		return fmt.Errorf("Failed to enable joining: %s", permitJoinResponse.Status)
-	}
-	//log.Println("Permit join response: ")
-	//outJSON(permitJoinResponse)
-
-	return nil
-}
-
-func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
-
-	waitUntilZStackReady(config.StableFlagFile)
-
-	d.devices = make(map[uint64]*Device)
-
-	err := d.Init(info)
-	if err != nil {
-		return fmt.Errorf("Could not connect to MQTT: %s", err)
-	}
-
-	userAgent := d.Conn.GetServiceClient("$device/:deviceId/channel/user-agent")
-	err = userAgent.OnEvent("pairing-requested", d.OnPairingRequest)
-	if err != nil {
-		return fmt.Errorf("Failed register user-agent service client: %s", err)
-	}
-
-	err = d.Export(d)
-	if err != nil {
-		return fmt.Errorf("Could not export driver: %s", err)
-	}
-
-	d.nwkmgrConn, err = zigbee.ConnectToNwkMgrServer(cfg.Hostname, cfg.NwkmgrPort)
+	d.nwkmgrConn, err = zigbee.ConnectToNwkMgrServer(d.config.Hostname, d.config.NwkmgrPort)
 	if err != nil {
 		return fmt.Errorf("Error connecting to nwkmgr %s", err)
 	}
@@ -156,20 +91,19 @@ func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 		d.onDeviceFound(deviceInfo)
 	}
 
-	done := false
+	/*done := false
 	d.nwkmgrConn.OnNetworkReady = func() {
 		if !done {
 			done = true
-			networkReady <- true
 		}
-	}
+	}*/
 
-	d.otaConn, err = zigbee.ConnectToOtaServer(cfg.Hostname, cfg.OtasrvrPort)
+	d.otaConn, err = zigbee.ConnectToOtaServer(d.config.Hostname, d.config.OtasrvrPort)
 	if err != nil {
 		return fmt.Errorf("Error connecting to ota server %s", err)
 	}
 
-	d.gatewayConn, err = zigbee.ConnectToGatewayServer(cfg.Hostname, cfg.GatewayPort)
+	d.gatewayConn, err = zigbee.ConnectToGatewayServer(d.config.Hostname, d.config.GatewayPort)
 	if err != nil {
 		return fmt.Errorf("Error connecting to gateway %s", err)
 	}
@@ -194,6 +128,7 @@ func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 
 	err = d.nwkmgrConn.SendCommand(&nwkmgr.NwkZigbeeNwkInfoReq{}, networkInfo)
 	if err != nil {
+		spew.Dump(networkInfo)
 		return fmt.Errorf("Failed getting network info: %s", err)
 	}
 
@@ -214,127 +149,99 @@ func (d *Driver) Connect(cfg *ZStackConfig, networkReady chan bool) error {
 
 	err = d.nwkmgrConn.SendCommand(&nwkmgr.NwkGetNwkKeyReq{}, networkKey)
 	if err != nil {
-		return fmt.Errorf("Failed getting network key: %s", err)
+		log.Fatalf("Failed getting network key: %s", err)
 	}
 
 	spew.Dump(networkKey)
 
-	log.Infof("Started coordinator. Channel:%d Pan ID:0x%X Key:% X", *networkInfo.NwkChannel, *networkInfo.PanId, networkKey.NewKey)
+	log.Debugf("Started coordinator. Channel:%d Pan ID:0x%X Key:% X", *networkInfo.NwkChannel, *networkInfo.PanId, networkKey.NewKey)
 
+	return d.FetchDevices()
+}
+
+func (d *Driver) EnableJoin(duration uint32) error {
+
+	permitJoinRequest := &nwkmgr.NwkSetPermitJoinReq{
+		PermitJoinTime: &duration,
+		PermitJoin:     nwkmgr.NwkPermitJoinTypeT_PERMIT_ALL.Enum(),
+	}
+
+	permitJoinResponse := &nwkmgr.NwkZigbeeGenericCnf{}
+
+	err := d.nwkmgrConn.SendCommand(permitJoinRequest, permitJoinResponse)
+	if err != nil {
+		return fmt.Errorf("Failed to enable joining: %s", err)
+	}
+	if permitJoinResponse.Status.String() != "STATUS_SUCCESS" {
+		return fmt.Errorf("Failed to enable joining: %s", permitJoinResponse.Status)
+	}
+
+	d.SendEvent("pairing-started", &events.PairingStarted{
+		Duration: int(duration),
+	})
+
+	go func() {
+		time.Sleep(time.Second * time.Duration(duration))
+		d.SendEvent("pairing-ended", &events.PairingStarted{
+			Duration: int(duration),
+		})
+	}()
 	return nil
 }
 
 func (d *Driver) FetchDevices() error {
-
 	return d.nwkmgrConn.FetchDeviceList()
-
-}
-
-func (d *Device) GetDriver() ninja.Driver {
-	return d.driver
-}
-
-func (d *Device) GetDeviceInfo() *model.Device {
-	return d.info
-}
-
-func (d *Device) SetEventHandler(sendEvent func(event string, payload interface{}) error) {
-	d.sendEvent = sendEvent
-}
-
-func (d *Device) getBasicInfo() error {
-
-	log.Debugf("Getting basic information from %X", *d.deviceInfo.IeeeAddress)
-
-	cluster := ClusterIDBasic
-	ManufacturerNameAttribute := uint32(0x004)
-	ModelIdentifierAttribute := uint32(0x005)
-
-	request := &gateway.GwReadDeviceAttributeReq{
-		DstAddress: &gateway.GwAddressStructT{
-			AddressType: gateway.GwAddressTypeT_UNICAST.Enum(),
-			IeeeAddr:    d.deviceInfo.IeeeAddress,
-		},
-		ClusterId:     &cluster,
-		AttributeList: []uint32{ManufacturerNameAttribute, ModelIdentifierAttribute},
-	}
-
-	response := &gateway.GwReadDeviceAttributeRspInd{}
-	err := d.driver.gatewayConn.SendAsyncCommand(request, response, 10*time.Second)
-	if err != nil {
-		return fmt.Errorf("Error getting basic device information state : %s", err)
-	}
-	if response.Status.String() != "STATUS_SUCCESS" {
-		return fmt.Errorf("Failed to get basic device information. status: %s", response.Status.String())
-	}
-
-	sigs := make(map[string]string)
-
-	manufacturerName := ""
-	modelIdentifier := ""
-
-	for _, attribute := range response.AttributeRecordList {
-
-		switch *attribute.AttributeId {
-		case ManufacturerNameAttribute:
-			manufacturerName = string(attribute.AttributeValue)
-		case ModelIdentifierAttribute:
-			modelIdentifier = string(attribute.AttributeValue)
-		default:
-			log.Debugf("Unknown attribute returned when finding basic info %s", *attribute.AttributeId)
-		}
-	}
-
-	sigs["zigbee:ManufacturerName"] = manufacturerName
-	sigs["zigbee:ModelIdentifier"] = modelIdentifier
-
-	name := fmt.Sprintf("%s by %s", modelIdentifier, manufacturerName)
-	id := fmt.Sprintf("%X", *d.deviceInfo.IeeeAddress)
-
-	d.info.Name = &name
-
-	d.info.Signatures = &sigs
-	d.info.NaturalIDType = "zigbee"
-	d.info.NaturalID = id
-	d.info.Name = &name
-
-	return nil
 }
 
 func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 	log.Debugf("\n\n")
-	log.Debugf("---- Found Device IEEE:%X ----\f", *deviceInfo.IeeeAddress)
+	log.Infof("---- Found Device IEEE:%X ----\f", *deviceInfo.IeeeAddress)
+	log.Debugf("Device Info: %v", *deviceInfo)
 
 	if d.devices[*deviceInfo.IeeeAddress] != nil {
-		log.Debugf("We've already seen this device")
+		// We've seen this already, but it may have been repaired. We *should* just be able to replace
+		// the deviceInfo object, which is used for all communication.
+		// TODO: Actually verify this. May need to re-run channel init.
+		d.devices[*deviceInfo.IeeeAddress].deviceInfo = deviceInfo
 	}
 
-	/*sigs, _ := simplejson.NewJson([]byte(`{
-	    "ninja:manufacturer": "Phillips",
-	    "ninja:productName": "Hue",
-	    "manufacturer:productModelId": "",
-	    "ninja:productType": "Light",
-	    "ninja:thingType": "light"
-	}`))*/
-
 	device := &Device{
-		info:       &model.Device{},
 		driver:     d,
 		deviceInfo: deviceInfo,
+		info: &model.Device{
+			NaturalID:     fmt.Sprintf("%X", *deviceInfo.IeeeAddress),
+			NaturalIDType: "zigbee",
+			Signatures:    &map[string]string{},
+		},
 	}
 
 	err := device.getBasicInfo()
 	if err != nil {
 		log.Debugf("Failed to get basic info: %s", err)
-		return
 	}
 
-	if d.Log.IsDebugEnabled() {
-		spew.Dump(deviceInfo)
+	if device.ManufacturerName != "" {
+		(*device.info.Signatures)["zigbee:ManufacturerName"] = device.ManufacturerName
+	} else {
+		device.ManufacturerName = "Unknown"
 	}
+	if device.ModelIdentifier != "" {
+		(*device.info.Signatures)["zigbee:ModelIdentifier"] = device.ModelIdentifier
+	} else {
+		device.ModelIdentifier = fmt.Sprintf("MAC:%X", *deviceInfo.IeeeAddress)
+	}
+
+	name := fmt.Sprintf("%s by %s", device.ModelIdentifier, device.ManufacturerName)
+
+	device.info.Name = &name
+
+	spew.Dump(deviceInfo)
 
 	err = d.Conn.ExportDevice(device)
+	if err != nil {
+		log.Fatalf("Failed to export zigbee device %s: %s", name, err)
+	}
 
 	log.Debugf("Got device : %d", *deviceInfo.IeeeAddress)
 
@@ -345,16 +252,15 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 			log.Debugf("This endpoint has on/off cluster")
 
 			onOff := &OnOffChannel{
-				Channel{
+				Channel: Channel{
 					device:   device,
 					endpoint: endpoint,
 				},
-				nil,
 			}
 
 			err := onOff.init()
 			if err != nil {
-				log.Errorf("Failed initialising on/off channel: %s", err)
+				log.Debugf("Failed initialising on/off channel: %s", err)
 			}
 
 		}
@@ -363,16 +269,15 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 			log.Debugf("This endpoint has power cluster")
 
 			power := &PowerChannel{
-				Channel{
+				Channel: Channel{
 					device:   device,
 					endpoint: endpoint,
 				},
-				nil,
 			}
 
 			err := power.init()
 			if err != nil {
-				log.Errorf("Failed initialising power channel: %s", err)
+				log.Debugf("Failed initialising power channel: %s", err)
 			}
 
 		}
@@ -381,16 +286,15 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 			log.Debugf("This endpoint has temperature cluster")
 
 			temp := &TempChannel{
-				Channel{
+				Channel: Channel{
 					device:   device,
 					endpoint: endpoint,
 				},
-				nil,
 			}
 
 			err := temp.init()
 			if err != nil {
-				log.Errorf("Failed initialising temp channel: %s", err)
+				log.Debugf("Failed initialising temp channel: %s", err)
 			}
 
 		}
@@ -399,16 +303,15 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 			log.Debugf("This endpoint has humidity cluster")
 
 			humidity := &HumidityChannel{
-				Channel{
+				Channel: Channel{
 					device:   device,
 					endpoint: endpoint,
 				},
-				nil,
 			}
 
 			err := humidity.init()
 			if err != nil {
-				log.Errorf("Failed initialising humidity channel: %s", err)
+				log.Debugf("Failed initialising humidity channel: %s", err)
 			}
 
 		}
@@ -417,7 +320,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 	d.devices[*deviceInfo.IeeeAddress] = device
 
-	log.Debugf("---- Finished Device IEEE:%X ----\n", *deviceInfo.IeeeAddress)
+	fmt.Printf("---- Finished Device IEEE:%X ----\n", *deviceInfo.IeeeAddress)
 
 }
 
@@ -433,22 +336,4 @@ func containsUInt32(hackstack []uint32, needle uint32) bool {
 		}
 	}
 	return false
-}
-
-func waitUntilZStackReady(checkFile string) {
-	if checkFile == "" {
-		return
-	}
-
-	// cooperate with zigbeeHAgw so that we don't start the zigbee driver
-	// until we look somewhat stable.
-	log.Debugf("waiting until zigbeeHAgw writes %s", checkFile)
-	for {
-		if _, err := os.Stat(checkFile); err == nil {
-			break
-		} else {
-			time.Sleep(time.Second)
-		}
-	}
-	log.Debugf("%s detected. start up continues...", checkFile)
 }
