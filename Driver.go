@@ -16,6 +16,7 @@ import (
 const (
 	ClusterIDBasic    uint32 = 0x00
 	ClusterIDOnOff    uint32 = 0x06
+	ClusterIDLevel    uint32 = 0x08 // We're always exporting as brightness for now
 	ClusterIDColor    uint32 = 0x300
 	ClusterIDTemp     uint32 = 0x402
 	ClusterIDHumidity uint32 = 0x405
@@ -216,6 +217,23 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 		},
 	}
 
+	for _, endpoint := range deviceInfo.SimpleDescList {
+		if *endpoint.ProfileId == 0xC05E /*ZLL*/ {
+
+			switch *endpoint.DeviceId {
+
+			case 0x0000: // On/Off Light
+				fallthrough
+			case 0x0100: // Dimmable Light
+				fallthrough
+			case 0x0200: // Color Light
+				fallthrough
+			case 0x210: // Ext Color Light
+				(*device.info.Signatures)["ninja:thingType"] = "light"
+			}
+		}
+	}
+
 	err := device.getBasicInfo()
 	if err != nil {
 		log.Debugf("Failed to get basic info: %s", err)
@@ -253,6 +271,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 			onOff := &OnOffChannel{
 				Channel: Channel{
+					ID:       fmt.Sprintf("%d-%d", *endpoint.EndpointId, ClusterIDOnOff),
 					device:   device,
 					endpoint: endpoint,
 				},
@@ -270,6 +289,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 			power := &PowerChannel{
 				Channel: Channel{
+					ID:       fmt.Sprintf("%d-%d", *endpoint.EndpointId, ClusterIDPower),
 					device:   device,
 					endpoint: endpoint,
 				},
@@ -287,6 +307,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 			temp := &TempChannel{
 				Channel: Channel{
+					ID:       fmt.Sprintf("%d-%d", *endpoint.EndpointId, ClusterIDTemp),
 					device:   device,
 					endpoint: endpoint,
 				},
@@ -304,6 +325,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 			humidity := &HumidityChannel{
 				Channel: Channel{
+					ID:       fmt.Sprintf("%d-%d", *endpoint.EndpointId, ClusterIDHumidity),
 					device:   device,
 					endpoint: endpoint,
 				},
@@ -312,6 +334,26 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 			err := humidity.init()
 			if err != nil {
 				log.Debugf("Failed initialising humidity channel: %s", err)
+			}
+
+		}
+
+		if containsUInt32(endpoint.InputClusters, ClusterIDLevel) {
+			log.Debugf("This endpoint has level cluster. Exporting as brightness channel")
+
+			spew.Dump("brightness cluster", endpoint, ClusterIDLevel)
+
+			brightness := &BrightnessChannel{
+				Channel: Channel{
+					ID:       fmt.Sprintf("%d-%d", *endpoint.EndpointId, ClusterIDLevel),
+					device:   device,
+					endpoint: endpoint,
+				},
+			}
+
+			err := brightness.init()
+			if err != nil {
+				log.Debugf("Failed initialising brightness channel: %s", err)
 			}
 
 		}

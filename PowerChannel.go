@@ -47,12 +47,12 @@ func (c *PowerChannel) init() error {
 	}
 
 	c.channel = channels.NewPowerChannel(c)
-	err = c.device.driver.Conn.ExportChannel(c.device, c.channel, "power")
+	err = c.device.driver.Conn.ExportChannel(c.device, c.channel, c.ID)
 	if err != nil {
 		log.Fatalf("Failed to announce power channel: %s", err)
 	}
 
-	go func() {
+	/*go func() {
 		for {
 			log.Debugf("Polling for power")
 			err := c.fetchState()
@@ -61,7 +61,7 @@ func (c *PowerChannel) init() error {
 			}
 			time.Sleep(10 * time.Second)
 		}
-	}()
+	}()*/
 
 	return nil
 }
