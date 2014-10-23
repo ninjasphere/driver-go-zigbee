@@ -173,6 +173,20 @@ func (d *Driver) Start() error {
 	log.Debugf("Started coordinator. Channel:%d Pan ID:0x%X Key:% X", *networkInfo.NwkChannel, *networkInfo.PanId, networkKey.NewKey)
 
 	return d.FetchDevices()
+
+}
+
+func (d *Driver) StartPairing(period uint32) (*uint32, error) {
+	if period > 254 {
+		period = 254
+	}
+	err := d.EnableJoin(period)
+	return &period, err
+}
+
+func (d *Driver) EndPairing() (error) {
+	err := d.EnableJoin(0)
+	return err
 }
 
 func (d *Driver) EnableJoin(duration uint32) error {
