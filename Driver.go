@@ -82,6 +82,8 @@ func (d *Driver) Reset(hard bool) error {
 
 func (d *Driver) Start() error {
 
+	waitUntilZStackReady(d.config.StableFlagFile)
+
 	var err error
 
 	d.nwkmgrConn, err = zigbee.ConnectToNwkMgrServer(d.config.Hostname, d.config.NwkmgrPort)
@@ -378,4 +380,22 @@ func containsUInt32(hackstack []uint32, needle uint32) bool {
 		}
 	}
 	return false
+}
+
+func waitUntilZStackReady(checkFile string) {
+	if checkFile == "" {
+		return
+	}
+
+	// cooperate with zigbeeHAgw so that we don't start the zigbee driver
+	// until we look somewhat stable.
+	log.Debugf("waiting until zigbeeHAgw writes %s", checkFile)
+	for {
+		if _, err := os.Stat(checkFile); err == nil {
+			break
+		} else {
+			time.Sleep(time.Second)
+		}
+	}
+	log.Debugf("%s detected. start up continues...", checkFile)
 }
