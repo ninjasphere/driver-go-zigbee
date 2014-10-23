@@ -67,7 +67,7 @@ func NewDriver(config *ZStackConfig) (*Driver, error) {
 		duration := uint32(pairingRequest.Duration)
 
 		if duration > 254 {
-		   duration = 254
+			duration = 254
 		}
 
 		log.Infof("Pairing request received from %s for %d seconds", values["deviceId"], duration)
@@ -184,21 +184,12 @@ func (d *Driver) StartPairing(period uint32) (*uint32, error) {
 	return &period, err
 }
 
-func (d *Driver) EndPairing() (error) {
+func (d *Driver) EndPairing() error {
 	err := d.EnableJoin(0)
 	return err
 }
 
 func (d *Driver) EnableJoin(duration uint32) error {
-
-	go func() {
-	   	save := d.devicesFound;
-		time.Sleep(time.Second * time.Duration(duration))
-		d.Log.Infof("Join window closes after %d seconds.", duration);
-		d.SendEvent("pairing-ended", &events.PairingEnded{
-			DevicesFound: int(d.devicesFound - save),
-		})
-	}()
 
 	permitJoinRequest := &nwkmgr.NwkSetPermitJoinReq{
 		PermitJoinTime: &duration,
@@ -219,7 +210,16 @@ func (d *Driver) EnableJoin(duration uint32) error {
 		Duration: int(duration),
 	})
 
-	d.Log.Infof("Join window opens for %d seconds", duration);
+	go func() {
+		save := d.devicesFound
+		time.Sleep(time.Second * time.Duration(duration))
+		d.Log.Infof("Join window closes after %d seconds.", duration)
+		d.SendEvent("pairing-ended", &events.PairingEnded{
+			DevicesFound: int(d.devicesFound - save),
+		})
+	}()
+
+	d.Log.Infof("Join window opens for %d seconds", duration)
 
 	return nil
 }
@@ -296,7 +296,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 	if err != nil {
 		log.Fatalf("Failed to export zigbee device %s: %s", name, err)
 	}
-	d.devicesFound++;
+	d.devicesFound++
 
 	log.Debugf("Got device : %d", *deviceInfo.IeeeAddress)
 
