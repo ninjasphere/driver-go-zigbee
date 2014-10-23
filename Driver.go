@@ -277,6 +277,13 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 				(*device.info.Signatures)["ninja:thingType"] = "light"
 			}
 		}
+
+		if *endpoint.ProfileId == 0x104 /* HA */ {
+			switch *endpoint.DeviceId {
+			case 0x009: // Mains Power Outlet
+				(*device.info.Signatures)["ninja:thingType"] = "socket"
+			}
+		}
 	}
 
 	err := device.getBasicInfo()
