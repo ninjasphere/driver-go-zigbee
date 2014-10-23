@@ -63,9 +63,14 @@ func NewDriver(config *ZStackConfig) (*Driver, error) {
 
 	userAgent := driver.Conn.GetServiceClient("$device/:deviceId/channel/user-agent")
 	userAgent.OnEvent("pairing-requested", func(pairingRequest *events.PairingRequest, values map[string]string) bool {
-		log.Infof("Pairing request received from %s for %d seconds", values["deviceId"], pairingRequest.Duration)
 
 		duration := uint32(pairingRequest.Duration)
+
+		if duration > 254 {
+		   duration = 254
+		}
+
+		log.Infof("Pairing request received from %s for %d seconds", values["deviceId"], duration)
 
 		if err := driver.EnableJoin(duration); err != nil {
 			log.Warningf("Failed to enable joining: %s", err)
