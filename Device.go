@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/ninjasphere/go-ninja/api"
@@ -20,6 +21,12 @@ type Device struct {
 	driver     *Driver
 	deviceInfo *nwkmgr.NwkDeviceInfoT
 	channels   []Channel
+}
+
+var cleanStart, err = regexp.Compile(`(^[^\w -]+)`)
+
+func cleanString(str []byte) string {
+	return string(cleanStart.ReplaceAll(str, []byte("")))
 }
 
 func (d *Device) getBasicInfo() error {
@@ -52,9 +59,9 @@ func (d *Device) getBasicInfo() error {
 
 		switch *attribute.AttributeId {
 		case ManufacturerNameAttribute:
-			d.ManufacturerName = string(attribute.AttributeValue)
+			d.ManufacturerName = cleanString(attribute.AttributeValue)
 		case ModelIdentifierAttribute:
-			d.ModelIdentifier = string(attribute.AttributeValue)
+			d.ModelIdentifier = cleanString(attribute.AttributeValue)
 		default:
 			log.Debugf("Unknown attribute returned when finding basic info %s", *attribute.AttributeId)
 		}
