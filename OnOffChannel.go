@@ -72,7 +72,7 @@ func (c *OnOffChannel) init() error {
 		log.Fatalf("Failed to announce on/off channel: %s", err)
 	}
 
-	/*go func() {
+	go func() {
 		for {
 			log.Debugf("Polling for on/off")
 			err := c.fetchState()
@@ -81,7 +81,7 @@ func (c *OnOffChannel) init() error {
 			}
 			time.Sleep(10 * time.Second)
 		}
-	}()*/
+	}()
 
 	return nil
 

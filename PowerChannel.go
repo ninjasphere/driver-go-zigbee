@@ -52,7 +52,7 @@ func (c *PowerChannel) init() error {
 		log.Fatalf("Failed to announce power channel: %s", err)
 	}
 
-	/*go func() {
+	go func() {
 		for {
 			log.Debugf("Polling for power")
 			err := c.fetchState()
@@ -61,7 +61,7 @@ func (c *PowerChannel) init() error {
 			}
 			time.Sleep(10 * time.Second)
 		}
-	}()*/
+	}()
 
 	return nil
 }
