@@ -5,6 +5,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/go-zigbee/gateway"
 )
@@ -76,8 +77,10 @@ func (c *ColorChannel) SetColor(state *channels.ColorState) error {
 		return fmt.Errorf("TODO: Only color mode 'hue' is supported atm.")
 	}
 
-	hue := uint32(*state.Hue * float64(math.MaxUint8))
-	saturation := uint32(*state.Saturation * float64(math.MaxUint8))
+	spew.Dump("setting color", state)
+
+	hue := uint32(*state.Hue * float64(math.MaxUint8-1))
+	saturation := uint32(*state.Saturation * float64(math.MaxUint8-1))
 
 	request := &gateway.DevSetColorReq{
 		DstAddress: &gateway.GwAddressStructT{
@@ -87,6 +90,8 @@ func (c *ColorChannel) SetColor(state *channels.ColorState) error {
 		HueValue:        &hue,
 		SaturationValue: &saturation,
 	}
+
+	spew.Dump(request)
 
 	response := &gateway.GwZigbeeGenericRspInd{}
 	err := c.device.driver.gatewayConn.SendAsyncCommand(request, response, 2*time.Second)
@@ -117,8 +122,8 @@ func (c *ColorChannel) fetchState() error {
 		return fmt.Errorf("Failed to get color state. status: %s", response.Status.String())
 	}
 
-	saturation := float64(float64(*response.SatValue) / float64(math.MaxUint8))
-	hue := float64(float64(*response.HueValue) / float64(math.MaxUint8))
+	saturation := float64(float64(*response.SatValue) / float64(math.MaxUint8-1))
+	hue := float64(float64(*response.HueValue) / float64(math.MaxUint8-1))
 
 	state := &channels.ColorState{
 		Mode:       "Hue",
