@@ -1,12 +1,12 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 
 	"github.com/ninjasphere/go-ninja/api"
+	nconfig "github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-zigbee"
 )
@@ -29,10 +29,8 @@ func main() {
 	zigbee.SetLogger(logger.GetLogger(info.ID + ".backend"))
 
 	// FIXME: use ninja configuration framework
-	flagset := flag.NewFlagSet("driver-go-zigbee", flag.ContinueOnError)
-	flagset.StringVar(&config.StableFlagFile, "zigbee-stable-file", "/var/run/zigbee.stable", "Location of zigbee.stable")
-	flagset.StringVar(&config.Hostname, "zstack-host", "localhost", "IP address or DNS name of zstack host.")
-	flagset.Parse(os.Args[1:])
+	config.StableFlagFile = nconfig.String("/var/run/zigbee.stable", "zigbee", "stable-file")
+	config.Hostname = nconfig.String("localhost", "zigbee", "host")
 
 	_, err := NewDriver(config)
 	if err != nil {
