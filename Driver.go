@@ -88,6 +88,22 @@ func (d *Driver) Reset(hard bool) error {
 }
 
 func (d *Driver) Start() error {
+	go func() {
+		// startup can take a while, so always succeed but then die if it fails.
+
+		// required because inbound RPC start calls have arbitrary timeouts which a) we are not aware of
+		// and b) we can't guarantee to satisfy here.
+
+		err := d.startup()
+		if err != nil {
+			d.Log.Fatalf("startup failed : %v", err)
+			os.Exit(1)
+		}
+	}()
+	return nil
+}
+
+func (d *Driver) startup() error {
 
 	waitUntilZStackReady(d.config.StableFlagFile)
 
