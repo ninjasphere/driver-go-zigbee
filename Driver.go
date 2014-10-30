@@ -7,6 +7,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-ninja/events"
+	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/model"
 	"github.com/ninjasphere/go-ninja/support"
 	"github.com/ninjasphere/go-zigbee"
@@ -55,6 +56,8 @@ func NewDriver(config *ZStackConfig) (*Driver, error) {
 	if err != nil {
 		log.Fatalf("Failed to initialize fake driver: %s", err)
 	}
+	log = driver.Log
+	zigbee.SetLogger(logger.GetLogger(info.ID + ".backend"))
 
 	err = driver.Export(driver)
 	if err != nil {
