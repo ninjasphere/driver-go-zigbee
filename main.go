@@ -31,6 +31,9 @@ func main() {
 	// FIXME: use ninja configuration framework
 	config.StableFlagFile = nconfig.String("/var/run/zigbee.stable", "zigbee", "stable-file")
 	config.Hostname = nconfig.String("localhost", "zigbee", "host")
+	if log.IsDebugEnabled() {
+		log.Debugf("running with configuration %+v", config)
+	}
 
 	_, err := NewDriver(config)
 	if err != nil {
