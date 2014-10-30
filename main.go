@@ -32,7 +32,7 @@ func main() {
 	config.StableFlagFile = nconfig.String("/var/run/zigbee.stable", "zigbee", "stable-file")
 	config.Hostname = nconfig.String("localhost", "zigbee", "host")
 	if log.IsDebugEnabled() {
-		log.Debugf("running with configuration %+v", config)
+		log.Debugf("version - %s - running with configuration %+v", Version, config)
 	}
 
 	_, err := NewDriver(config)
