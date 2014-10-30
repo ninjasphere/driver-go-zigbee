@@ -1,7 +1,7 @@
 {
   "id": "com.ninjablocks.zigbee",
   "name": "driver-zigbee",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Ninja Sphere - Zigbee Driver",
   "main": "driver-go-zigbee",
   "scripts": {
