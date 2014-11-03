@@ -21,6 +21,7 @@ const (
 	ClusterIDColor    uint32 = 0x300
 	ClusterIDTemp     uint32 = 0x402
 	ClusterIDHumidity uint32 = 0x405
+	ClusterIDIASZone  uint32 = 0x500
 	ClusterIDPower    uint32 = 0x702
 )
 
@@ -463,6 +464,28 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 			err := color.init()
 			if err != nil {
 				log.Debugf("Failed initialising color channel: %s", err)
+			}
+
+		}
+
+		if containsUInt32(endpoint.InputClusters, ClusterIDIASZone) {
+			log.Debugf("This endpoint has IAS Zone cluster.")
+
+			if log.IsDebugEnabled() {
+				spew.Dump("ias zone cluster", endpoint, ClusterIDIASZone)
+			}
+
+			color := &IASZoneCluster{
+				Channel: Channel{
+					ID:       fmt.Sprintf("%d-%d", *endpoint.EndpointId, ClusterIDIASZone),
+					device:   device,
+					endpoint: endpoint,
+				},
+			}
+
+			err := color.init()
+			if err != nil {
+				log.Debugf("Failed initialising IAS Zone channel: %s", err)
 			}
 
 		}
