@@ -37,15 +37,11 @@ type IASZoneStatus struct {
 func (c *IASZoneCluster) init() error {
 	log.Debugf("Initialising IAS Zone cluster of device % X", *c.device.deviceInfo.IeeeAddress)
 
-	stateChange := c.device.driver.gatewayConn.OnZoneState(*c.device.deviceInfo.IeeeAddress)
+	stateChange := c.device.driver.gatewayConn.OnZoneState(*c.device.deviceInfo.IeeeAddress, *c.endpoint.EndpointId)
 
 	go func() {
 		for {
 			state := <-stateChange
-
-			if state.SrcAddress.EndpointId == c.endpoint.EndpointId {
-				log.Infof("IAS Zone change. Device:%X State:%v", *c.device.deviceInfo.IeeeAddress, state)
-			}
 
 			status := &IASZoneStatus{}
 
