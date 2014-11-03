@@ -47,7 +47,7 @@ func (c *TempChannel) init() error {
 	}
 
 	c.channel = channels.NewTemperatureChannel(c)
-	err = c.device.driver.Conn.ExportChannel(c.device, c.channel, "temperature")
+	err = c.device.driver.Conn.ExportChannel(c.device, c.channel, c.ID)
 	if err != nil {
 		log.Fatalf("Failed to announce temperature channel: %s", err)
 	}
