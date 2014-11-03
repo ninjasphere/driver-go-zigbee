@@ -61,7 +61,7 @@ func (c *OnOffSwitchCluster) init() error {
 
 			spew.Dump("Incoming on/off state:", state)
 
-			c.SendEvent("state", true)
+			c.SendEvent("pressed", true)
 		}
 	}()
 
