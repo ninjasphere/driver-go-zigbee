@@ -38,8 +38,9 @@ func (c *OnOffChannel) SetOnOff(state bool) error {
 func (c *OnOffChannel) init() error {
 	log.Debugf("Initialising on/off channel of device %d", *c.device.deviceInfo.IeeeAddress)
 
-	clusterID := uint32(0x06)
-	attributeID := uint32(0)
+	//clusterID := uint32(0x06)
+
+	/*attributeID := uint32(0)
 	minReportInterval := uint32(1)
 	maxReportInterval := uint32(120)
 
@@ -64,7 +65,7 @@ func (c *OnOffChannel) init() error {
 		log.Errorf("Error enabling on/off reporting: %s", err)
 	} else if response.Status.String() != "STATUS_SUCCESS" {
 		log.Errorf("Failed to enable on/off reporting. status: %s", response.Status.String())
-	}
+	}*/
 
 	c.channel = channels.NewOnOffChannel(c)
 	err = c.device.driver.Conn.ExportChannel(c.device, c.channel, c.ID)
