@@ -36,7 +36,8 @@ type ZStackConfig struct {
 type Driver struct {
 	support.DriverSupport
 
-	devices map[uint64]*Device
+	localDevice *nwkmgr.NwkDeviceInfoT
+	devices     map[uint64]*Device
 
 	config *ZStackConfig
 
@@ -174,6 +175,8 @@ func (d *Driver) startup() error {
 	if err != nil {
 		return fmt.Errorf("Failed getting local device info: %s", err)
 	}
+
+	d.localDevice = localDevice.DeviceInfoList
 
 	if log.IsDebugEnabled() {
 		spew.Dump("device info", localDevice.String())
@@ -353,11 +356,11 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 		log.Debugf("Got endpoint : %d", *endpoint.EndpointId)
 
 		if containsUInt32(endpoint.InputClusters, ClusterIDOnOff) {
-			log.Debugf("This endpoint has on/off cluster")
+			log.Debugf("This endpoint has an input on/off cluster")
 
 			onOff := &OnOffChannel{
 				Channel: Channel{
-					ID:       fmt.Sprintf("%d-%d", *endpoint.EndpointId, ClusterIDOnOff),
+					ID:       fmt.Sprintf("%d-%d-in", *endpoint.EndpointId, ClusterIDOnOff),
 					device:   device,
 					endpoint: endpoint,
 				},
@@ -365,7 +368,25 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 			err := onOff.init()
 			if err != nil {
-				log.Debugf("Failed initialising on/off channel: %s", err)
+				log.Debugf("Failed initialising input on/off channel: %s", err)
+			}
+
+		}
+
+		if containsUInt32(endpoint.OutputClusters, ClusterIDOnOff) {
+			log.Debugf("This endpoint has an output on/off cluster")
+
+			onOff := &OnOffSwitchCluster{
+				Channel: Channel{
+					ID:       fmt.Sprintf("%d-%d-out", *endpoint.EndpointId, ClusterIDOnOff),
+					device:   device,
+					endpoint: endpoint,
+				},
+			}
+
+			err := onOff.init()
+			if err != nil {
+				log.Debugf("Failed initialising output on/off channel: %s", err)
 			}
 
 		}
