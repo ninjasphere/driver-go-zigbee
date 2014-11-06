@@ -9,4 +9,5 @@ binary release from http://www.ti.com/tool/z-stack using a CC2531 USB dongle on 
 ## License
 
 Copyright 2014 Ninja Blocks, Inc. All rights reserved.
+
 Licensed under the MIT License
