@@ -1,1 +1,1 @@
-nservice driver-go-zigbee stop
+nservice -q driver-go-zigbee stop

@@ -1,1 +1,1 @@
-nservice driver-go-zigbee start
+nservice -q driver-go-zigbee start
