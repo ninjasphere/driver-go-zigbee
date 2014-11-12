@@ -1,1 +1,2 @@
-nservice -q driver-go-zigbee start
+/opt/ninjablocks/bin/nservice -q driver-go-zigbee stop
+/opt/ninjablocks/bin/nservice -q driver-go-zigbee start
