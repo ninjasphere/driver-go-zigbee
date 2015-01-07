@@ -9,10 +9,10 @@ import (
 
 type OnOffSwitchCluster struct {
 	Channel
-	SendEvent func(event string, payload interface{}) error
+	SendEvent func(event string, payload ...interface{}) error
 }
 
-func (c *OnOffSwitchCluster) SetEventHandler(handler func(event string, payload interface{}) error) {
+func (c *OnOffSwitchCluster) SetEventHandler(handler func(event string, payload ...interface{}) error) {
 	c.SendEvent = handler
 }
 
