@@ -350,6 +350,13 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 	d.devices[*deviceInfo.IeeeAddress] = device
 
+	batchChannel := &BatchChannel{
+		Channel: Channel{
+			ID:     "batch",
+			device: device,
+		},
+	}
+
 	log.Debugf("Got device : %d", *deviceInfo.IeeeAddress)
 
 	for _, endpoint := range deviceInfo.SimpleDescList {
@@ -371,6 +378,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 				log.Debugf("Failed initialising input on/off channel: %s", err)
 			}
 
+			batchChannel.onOff = onOff
 		}
 
 		if containsUInt32(endpoint.OutputClusters, ClusterIDOnOff) {
@@ -465,6 +473,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 				log.Debugf("Failed initialising brightness channel: %s", err)
 			}
 
+			batchChannel.brightness = brightness
 		}
 
 		if containsUInt32(endpoint.InputClusters, ClusterIDColor) {
@@ -487,6 +496,7 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 				log.Debugf("Failed initialising color channel: %s", err)
 			}
 
+			batchChannel.color = color
 		}
 
 		if containsUInt32(endpoint.InputClusters, ClusterIDIASZone) {
@@ -511,6 +521,12 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 		}
 
+	}
+
+	if batchChannel.brightness != nil || batchChannel.color != nil {
+		if err := batchChannel.init(); err != nil {
+			log.Warningf("Failed to export batch channel: %s", err)
+		}
 	}
 
 	fmt.Printf("---- Finished Device IEEE:%X ----\n", *deviceInfo.IeeeAddress)
