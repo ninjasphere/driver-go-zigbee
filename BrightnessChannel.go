@@ -72,7 +72,7 @@ func (c *BrightnessChannel) init() error {
 
 func (c *BrightnessChannel) SetBrightness(state float64) error {
 	level := uint32(state * float64(math.MaxUint8))
-	transition := uint32(1) // 1/10th seconds?
+	transition := uint32(10) // 1/100th seconds?
 
 	request := &gateway.DevSetLevelReq{
 		DstAddress: &gateway.GwAddressStructT{
