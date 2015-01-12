@@ -205,6 +205,9 @@ func (d *Driver) StartPairing(period uint32) (*uint32, error) {
 		period = 254
 	}
 	err := d.EnableJoin(period)
+	if err != nil {
+		d.Log.Warningf("enable join failed: %v", err)
+	}
 	return &period, err
 }
 
@@ -214,6 +217,10 @@ func (d *Driver) EndPairing() error {
 }
 
 func (d *Driver) EnableJoin(duration uint32) error {
+
+	if d.nwkmgrConn == nil {
+		return fmt.Errorf("Refused attempt to enable join when nwkmgrConn is nil.")
+	}
 
 	permitJoinRequest := &nwkmgr.NwkSetPermitJoinReq{
 		PermitJoinTime: &duration,
