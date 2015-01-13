@@ -218,8 +218,16 @@ func (d *Driver) EndPairing() error {
 
 func (d *Driver) EnableJoin(duration uint32) error {
 
-	if d.nwkmgrConn == nil {
-		return fmt.Errorf("Refused attempt to enable join when nwkmgrConn is nil.")
+	for d.nwkmgrConn == nil || duration == 0 {
+		if duration == 0 {
+			return fmt.Errorf("Refused attempt to enable join when nwkmgrConn is nil or duration is zero.")
+		}
+		//
+		// deals with a race between pairing request and driver actually being ready by
+		// delaying until the driver has started or until the duration
+		//
+		time.Sleep(time.Second)
+		duration -= 1
 	}
 
 	permitJoinRequest := &nwkmgr.NwkSetPermitJoinReq{
