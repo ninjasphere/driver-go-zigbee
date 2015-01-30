@@ -76,6 +76,12 @@ func (c *PowerChannel) fetchState() error {
 	}
 
 	response := &gateway.DevGetPowerRspInd{}
+	if c.device.driver == nil {
+		log.Fatalf("assertion failed: c.device.driver != nil")
+	}
+	if c.device.driver.gatewayConn == nil {
+		log.Fatalf("assertion failed: c.device.driver.gatewayConn != nil")
+	}
 	err := c.device.driver.gatewayConn.SendAsyncCommand(request, response, 10*time.Second)
 	if err != nil {
 		return fmt.Errorf("Error getting power level : %s", err)
