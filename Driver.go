@@ -318,6 +318,12 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 
 		if *endpoint.ProfileId == 0x104 /* HA */ {
 			switch *endpoint.DeviceId {
+			case 0x0100: // On/Off Light
+				fallthrough
+			case 0x0101: // Dimmable Light
+				fallthrough
+			case 0x0102: // Color Dimmable Light
+				(*device.info.Signatures)["ninja:thingType"] = "light"
 			case 0x009: // Mains Power Outlet
 				(*device.info.Signatures)["ninja:thingType"] = "socket"
 			}
