@@ -326,6 +326,8 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 				(*device.info.Signatures)["ninja:thingType"] = "light"
 			case 0x009: // Mains Power Outlet
 				(*device.info.Signatures)["ninja:thingType"] = "socket"
+			case 0x302: // Temperature Sensor
+				(*device.info.Signatures)["ninja:thingType"] = "sensor"
 			}
 		}
 	}
