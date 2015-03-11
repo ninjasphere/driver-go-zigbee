@@ -46,6 +46,17 @@ type Driver struct {
 	otaConn     *zigbee.ZStackOta
 
 	devicesFound int
+
+	driverConfig DriverConfig
+}
+
+type DriverConfig struct {
+	Devices map[string]deviceConfig
+}
+
+type deviceConfig struct {
+	ManufacturerName string
+	ModelIdentifier  string
 }
 
 func NewDriver(config *ZStackConfig) (*Driver, error) {
@@ -92,7 +103,18 @@ func (d *Driver) Reset(hard bool) error {
 	return d.nwkmgrConn.Reset(hard)
 }
 
-func (d *Driver) Start() error {
+func (d *Driver) saveConfig() {
+	d.SendEvent("config", d.driverConfig)
+}
+
+func (d *Driver) Start(config DriverConfig) error {
+
+	spew.Dump("Got config", config)
+	if config.Devices == nil {
+		config.Devices = map[string]deviceConfig{}
+	}
+	d.driverConfig = config
+
 	go func() {
 		// startup can take a while, so always succeed but then die if it fails.
 
@@ -290,11 +312,13 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 		return
 	}
 
+	id := fmt.Sprintf("%X", *deviceInfo.IeeeAddress)
+
 	device := &Device{
 		driver:     d,
 		deviceInfo: deviceInfo,
 		info: &model.Device{
-			NaturalID:     fmt.Sprintf("%X", *deviceInfo.IeeeAddress),
+			NaturalID:     id,
 			NaturalIDType: "zigbee",
 			Signatures:    &map[string]string{},
 		},
@@ -329,13 +353,26 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 			case 0x302: // Temperature Sensor
 				(*device.info.Signatures)["ninja:thingType"] = "sensor"
 			}
+
 		}
 	}
 
-	err := device.getBasicInfo()
-	if err != nil {
-		log.Debugf("Failed to get basic info for: %X : %s", *deviceInfo.IeeeAddress, err)
-		return
+	if cfg, ok := d.driverConfig.Devices[id]; ok {
+		device.ModelIdentifier = cfg.ModelIdentifier
+		device.ManufacturerName = cfg.ManufacturerName
+	} else {
+		err := device.getBasicInfo()
+		if err != nil {
+			log.Debugf("Failed to get basic info for: %X : %s", *deviceInfo.IeeeAddress, err)
+			return
+		}
+
+		cfg = deviceConfig{
+			ModelIdentifier:  device.ModelIdentifier,
+			ManufacturerName: device.ManufacturerName,
+		}
+		d.driverConfig.Devices[id] = cfg
+		d.saveConfig()
 	}
 
 	name := ""
