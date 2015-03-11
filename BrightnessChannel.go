@@ -11,7 +11,8 @@ import (
 
 type BrightnessChannel struct {
 	Channel
-	channel *channels.BrightnessChannel
+	lastState *float64
+	channel   *channels.BrightnessChannel
 }
 
 // -------- Brightness Protocol --------
@@ -92,6 +93,7 @@ func (c *BrightnessChannel) SetBrightness(state float64) error {
 		return fmt.Errorf("Failed to set brightness state. status: %s", response.Status.String())
 	}
 
+	c.lastState = nil
 	return c.fetchState()
 }
 
@@ -112,7 +114,12 @@ func (c *BrightnessChannel) fetchState() error {
 		return fmt.Errorf("Failed to get brightness state. status: %s", response.Status.String())
 	}
 
-	c.channel.SendState(float64(*response.LevelValue) / float64(math.MaxUint8))
+	state := float64(*response.LevelValue) / float64(math.MaxUint8)
+
+	if c.lastState == nil || *c.lastState != state {
+		c.lastState = &state
+		c.channel.SendState(state)
+	}
 
 	return nil
 }
