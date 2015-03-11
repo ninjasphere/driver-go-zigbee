@@ -58,7 +58,7 @@ func (c *TempChannel) init() error {
 			if err != nil {
 				log.Errorf("Failed to poll for Temperature %s", err)
 			}
-			time.Sleep(10 * time.Second)
+			time.Sleep(1 * time.Minute)
 		}
 	}()
 
