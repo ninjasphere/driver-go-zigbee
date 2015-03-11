@@ -351,6 +351,13 @@ func (d *Driver) onDeviceFound(deviceInfo *nwkmgr.NwkDeviceInfoT) {
 		name += device.ManufacturerName
 	}
 
+	if device.ManufacturerName == "MRVL" && device.ModelIdentifier == "MZ100" {
+		(*device.info.Signatures)["zigbee:ManufacturerName"] = device.ManufacturerName
+		(*device.info.Signatures)["ninja:manufacturer"] = "Belkin"
+		(*device.info.Signatures)["ninja:productName"] = "WeMo Smart LED Bulb"
+		name = "WeMo Smart Bulb"
+	}
+
 	log.Debugf("\n\n")
 	log.Infof("---- Found Device IEEE:%X Name:%s ----\f", *deviceInfo.IeeeAddress, name)
 	log.Debugf("Device Info: %v", *deviceInfo)
