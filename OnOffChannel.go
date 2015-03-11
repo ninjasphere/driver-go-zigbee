@@ -10,7 +10,8 @@ import (
 
 type OnOffChannel struct {
 	Channel
-	channel *channels.OnOffChannel
+	lastState *bool
+	channel   *channels.OnOffChannel
 }
 
 // -------- On/Off Protocol --------
@@ -89,6 +90,7 @@ func (c *OnOffChannel) init() error {
 }
 
 func (c *OnOffChannel) setState(state *gateway.GwOnOffStateT) error {
+
 	request := &gateway.DevSetOnOffStateReq{
 		DstAddress: &gateway.GwAddressStructT{
 			AddressType: gateway.GwAddressTypeT_UNICAST.Enum(),
@@ -105,6 +107,8 @@ func (c *OnOffChannel) setState(state *gateway.GwOnOffStateT) error {
 	if response.Status.String() != "STATUS_SUCCESS" {
 		return fmt.Errorf("Failed to set on/off state. status: %s", response.Status.String())
 	}
+
+	c.lastState = nil
 
 	return c.fetchState()
 }
@@ -132,7 +136,12 @@ func (c *OnOffChannel) fetchState() error {
 		return fmt.Errorf("Failed to get on/off state. status: %s", response.Status.String())
 	}
 
-	c.channel.SendState(*response.StateValue == gateway.GwOnOffStateValueT_ON)
+	state := *response.StateValue == gateway.GwOnOffStateValueT_ON
+
+	if c.lastState == nil || *c.lastState != state {
+		c.lastState = &state
+		c.channel.SendState(state)
+	}
 
 	return nil
 }
