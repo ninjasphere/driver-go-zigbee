@@ -36,7 +36,7 @@ go get -d -v ./... &&
 go build -ldflags "-X main.GitCommit ${GIT_COMMIT}${GIT_DIRTY}" -o ${BIN_NAME} && (
 # building the master branch on ci
 if [ "$BUILDBOX_BRANCH" = "master" ]; then
-	go build -ldflags "-X main.BugsnagKey=${BUGSNAG_KEY}" -tags release -o ./bin/${BIN_NAME}
+	go build -ldflags "-X main.BugsnagKey ${BUGSNAG_KEY}" -tags release -o ./bin/${BIN_NAME}
 else
 	go build -o ./bin/${BIN_NAME}
 fi
