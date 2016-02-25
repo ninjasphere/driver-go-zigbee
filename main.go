@@ -5,6 +5,7 @@ import (
 	nconfig "github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/support"
+	"os"
 )
 
 var (
@@ -23,13 +24,22 @@ func main() {
 	config.StableFlagFile = nconfig.String("/var/run/zigbee.stable", "zigbee", "stable-file")
 	config.Hostname = nconfig.String("localhost", "zigbee", "host")
 
-	_, err := NewDriver(config)
-	if log.IsDebugEnabled() {
-		log.Debugf("version - %s - running with configuration %+v", Version, config)
-	}
-
+	check, err := os.Open("/etc/disable-zigbee")
 	if err != nil {
-		log.Fatalf("Failed to start ZigBee driver: %s", err)
+
+		// this is the expected case
+
+		_, err := NewDriver(config)
+		if log.IsDebugEnabled() {
+			log.Debugf("version - %s - running with configuration %+v", Version, config)
+		}
+
+		if err != nil {
+			log.Fatalf("Failed to start ZigBee driver: %s", err)
+		}
+	} else {
+		check.Close()
+		log.Debugf("version - %s - zigbee access disabled by /etc/disable-zigbee", Version)
 	}
 
 	support.WaitUntilSignal()
