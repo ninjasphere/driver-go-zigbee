@@ -26,7 +26,12 @@ export GOPATH="$(pwd)/.gopath"
 
 # move the working path and build
 cd .gopath/src/github.com/${OWNER}/${PROJECT_NAME} &&
-go get -d -v ./... &&
+go get -d -v ./...
+
+# fixup go dependencies
+GOOS= GOARCH= go get github.com/tools/godep
+PATH=${GOPATH}/bin:${PATH} godep restore 
+
 go build -ldflags "-X main.GitCommit ${GIT_COMMIT}${GIT_DIRTY}" -o ${BIN_NAME} && (
 # building the master branch on ci
 if [ "$BUILDBOX_BRANCH" = "master" ]; then
