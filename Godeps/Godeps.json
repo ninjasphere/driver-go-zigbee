@@ -1,0 +1,17 @@
+{
+	"ImportPath": "github.com/ninjasphere/driver-go-zigbee",
+	"GoVersion": "go1.6",
+	"GodepVersion": "v74",
+	"Deps": [
+		{
+			"ImportPath": "github.com/juju/loggo",
+			"Comment": "known-compatible-2-g8477fc9",
+			"Rev": "8477fc936adf0e382d680310047ca27e128a309a"
+		},
+		{
+			"ImportPath": "github.com/wolfeidau/loggo-syslog",
+			"Comment": "v1.0.1",
+			"Rev": "319e18c8e49e588df8034e5609ba1bc86d3bd443"
+		}
+	]
+}

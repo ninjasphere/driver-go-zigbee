@@ -3,3 +3,4 @@ main
 pkg/
 .AppleDouble
 bin/driver-go-zigbee
+vendor/
